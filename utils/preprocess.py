@@ -1,8 +1,8 @@
 import re
+import pickle
 import numpy as np
 import pandas as pd
 import streamlit as st
-from gensim.models import KeyedVectors
 from pathlib import Path
 
 MODEL_DIR = Path(__file__).parent.parent / 'models'
@@ -40,7 +40,8 @@ GAMBLING_PATTERN = re.compile('|'.join(re.escape(k) for k in GAMBLING_KEYWORDS),
 
 @st.cache_resource(show_spinner='FastText 모델 로드 중...')
 def load_fasttext():
-    return KeyedVectors.load(str(MODEL_DIR / 'fasttext_kv.model'))
+    with open(MODEL_DIR / 'word_vectors.pkl', 'rb') as f:
+        return pickle.load(f)
 
 
 def detect_lang(name):

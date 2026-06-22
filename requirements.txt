@@ -3,7 +3,6 @@ pandas
 numpy
 scikit-learn
 xgboost
-gensim
 shap
 openpyxl
 matplotlib
