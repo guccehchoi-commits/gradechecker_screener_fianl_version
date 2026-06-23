@@ -458,7 +458,7 @@ elif row_prob >= thr:
             elif '429' in content or 'quota' in content.lower() or 'exhausted' in content.lower():
                 st.caption('📊 오늘 AI 분석 횟수를 모두 사용했습니다. 내일 다시 이용하거나 위 자동 요약을 참고해 주세요.')
             else:
-                st.caption(f'⚠️ 오류 내용 (임시 진단용): {content}')
+                st.caption('⚠️ AI 분석 연결에 실패했습니다. 잠시 후 다시 시도하거나 위 자동 요약을 참고해 주세요.')
 
 st.divider()
 
