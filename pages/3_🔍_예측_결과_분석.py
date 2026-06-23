@@ -457,13 +457,7 @@ elif row_prob >= thr:
             st.markdown('**🤖 AI 심층 분석**')
             st.success(content)
         elif status == 'err':
-            # API 키 미등록 / 할당량 초과 / 네트워크 오류 등 구분 안내
-            if 'API_KEY' in content or 'api_key' in content or 'invalid' in content.lower():
-                st.caption('🔑 API 키가 올바르지 않습니다. Streamlit Secrets의 GEMINI_API_KEY를 확인해 주세요.')
-            elif '429' in content or 'quota' in content.lower() or 'exhausted' in content.lower():
-                st.caption('📊 오늘 AI 분석 횟수를 모두 사용했습니다. 내일 다시 이용하거나 위 자동 요약을 참고해 주세요.')
-            else:
-                st.caption('⚠️ AI 분석 연결에 실패했습니다. 잠시 후 다시 시도하거나 위 자동 요약을 참고해 주세요.')
+            st.caption(f'[진단] {content}')
 
 st.divider()
 
