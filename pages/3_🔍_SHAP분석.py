@@ -410,47 +410,48 @@ elif level == '검토 대상':
 else:
     st.info(auto_txt)
 
-# ── AI 심층 분석 (Layer 2 — Gemini, 버튼 클릭 시에만) ────────
+# ── AI 심층 분석 (Layer 2 — Gemini) ─────────────────────────
+# 설계 원칙:
+#   1) 검토 대상 게임(≥thr)에만 버튼 노출 → 저위험 게임 호출 차단
+#   2) 캐시 키 = 게임명(session 단위) → 동일 게임 재클릭 시 재호출 없음
+#   3) 캐시 존재 시 버튼 자체를 숨김 → 이중 호출 물리적 차단
+#   4) 실패(quota·네트워크) 시 '' 저장 → 버튼 재노출 없음, 에러 미표시
+#   5) 프롬프트 최소화: input ~55 tokens / output max 100 tokens
 gemini_key = st.secrets.get('GEMINI_API_KEY', '')
-if gemini_key:
-    cache_key = f'gem_{sel_game}_{round(row_prob, 2)}'
-    col_btn, col_note = st.columns([1, 3])
-    with col_btn:
-        run_ai = st.button('✨ AI 심층 분석', type='secondary', use_container_width=True)
-    with col_note:
-        st.caption('Gemini AI가 탐지 이유를 추가로 해석합니다. 같은 게임은 다시 클릭해도 재호출 없이 캐시를 사용합니다.')
+if gemini_key and row_prob >= thr:
+    cache_key = f'gem_{sel_game}'   # 세션 내 게임명 단위 캐시
 
-    if run_ai or cache_key in st.session_state:
-        if cache_key not in st.session_state:
-            with st.spinner('AI 분석 중...'):
+    if cache_key not in st.session_state:
+        if st.button('✨ AI 심층 분석', type='secondary'):
+            with st.spinner('분석 중...'):
                 try:
                     import google.generativeai as genai
                     genai.configure(api_key=gemini_key)
                     mdl = genai.GenerativeModel(
                         'gemini-1.5-flash',
                         generation_config=genai.GenerationConfig(
-                            max_output_tokens=150, temperature=0.3,
+                            max_output_tokens=100,  # 토큰 절감
+                            temperature=0.2,         # 일관성 ↑ → 재시도 필요성 ↓
                         ),
                     )
-                    top3 = ', '.join(f'{n}({v:+.2f})' for n, v in pos_feats[:3])
-                    boost_str = ', '.join(b[0] for b in boosts) if boosts else '없음'
+                    top2 = ','.join(f'{n}({v:+.2f})' for n, v in pos_feats[:2])
+                    boost_str = boosts[0][0] if boosts else ''
                     prompt = (
-                        f"게임물 등급재분류 위험도 분석 결과를 비전문가에게 2문장으로 설명.\n"
-                        f"게임: {sel_game} / 등급: {grade_val} / 확률: {row_prob:.0%}\n"
-                        f"주요요인: {top3} / 추가보정: {boost_str}\n"
-                        f"SHAP·모델 언급 없이, 쉬운 한국어로, 왜 재분류 가능성이 있는지만 설명."
+                        f"게임:{sel_game} 등급:{grade_val} 확률:{row_prob:.0%}\n"
+                        f"탐지주요인:{top2}"
+                        + (f" 추가보정:{boost_str}" if boost_str else '')
+                        + "\n쉬운 한국어 2문장. 전문용어 금지."
                     )
                     resp = mdl.generate_content(prompt)
                     st.session_state[cache_key] = resp.text.strip()
                 except Exception:
-                    st.session_state[cache_key] = None
+                    st.session_state[cache_key] = ''  # 실패 기록 → 버튼 재표시 차단
 
-        ai_txt = st.session_state.get(cache_key)
-        if ai_txt:
-            st.markdown('**🤖 AI 분석**')
-            st.success(ai_txt)
-        else:
-            st.warning('AI 분석을 불러올 수 없습니다. 자동 분석 요약을 참고해 주세요.')
+    # 성공 시에만 표시 — 실패(빈 문자열)는 조용히 무시 (Layer 1이 이미 표시됨)
+    ai_txt = st.session_state.get(cache_key, '')
+    if ai_txt:
+        st.markdown('**🤖 AI 심층 분석**')
+        st.success(ai_txt)
 
 st.divider()
 
