@@ -431,10 +431,10 @@ elif row_prob >= thr:
                         + (f" 추가보정:{boost_str}" if boost_str else '')
                         + "\n쉬운 한국어 2문장. 전문용어 금지."
                     )
-                    # v1 엔드포인트 + gemini-1.5-flash (무료 1,500건/일)
+                    # gemini-2.0-flash, v1beta (이 키로 실제 동작 확인된 모델)
                     _url = (
-                        "https://generativelanguage.googleapis.com/v1"
-                        f"/models/gemini-1.5-flash:generateContent?key={gemini_key}"
+                        "https://generativelanguage.googleapis.com/v1beta"
+                        f"/models/gemini-2.0-flash:generateContent?key={gemini_key}"
                     )
                     _body = {
                         "contents": [{"parts": [{"text": prompt}]}],
@@ -457,7 +457,12 @@ elif row_prob >= thr:
             st.markdown('**🤖 AI 심층 분석**')
             st.success(content)
         elif status == 'err':
-            st.caption(f'[진단] {content}')
+            if '429' in content or 'quota' in content.lower() or 'exhausted' in content.lower():
+                st.caption('📊 오늘 AI 분석 횟수를 모두 사용했습니다. 내일 다시 이용하거나 위 자동 요약을 참고해 주세요.')
+            elif 'api_key' in content.lower() or 'invalid' in content.lower() or '401' in content or '403' in content:
+                st.caption('🔑 API 키가 올바르지 않습니다. Streamlit Secrets의 GEMINI_API_KEY를 확인해 주세요.')
+            else:
+                st.caption('⚠️ AI 분석 연결에 실패했습니다. 잠시 후 다시 시도해 주세요.')
 
 st.divider()
 
