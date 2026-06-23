@@ -5,6 +5,74 @@
 
 ---
 
+## [v0.4.3] — 2026-06-23
+
+### Fixed
+- Gemini 모델 `gemini-1.5-flash` → `gemini-2.0-flash` 교체 (이 키로 실제 동작 확인된 모델)
+- 엔드포인트 `v1` → `v1beta` 복구 (gemini-2.0-flash는 v1beta 지원)
+- `num__ft_N` 피처명 한국어 변환 누락 버그 수정 (`_pretty()` 함수에 `num__` 접두어 처리 추가)
+- 오류 캐시 자동 삭제 코드 제거 → 반복 API 호출 차단
+
+### Changed
+- 오류 메시지 원인별 분기: API 키 오류 / 할당량 초과(429) / 기타 구분 안내
+
+### Files Changed
+- `pages/3_🔍_탐지_이유_분석.py` (후에 `3_🔍_예측_결과_분석.py`로 리네임)
+
+---
+
+## [v0.4.2] — 2026-06-23
+
+### Fixed
+- `google-generativeai` 패키지 제거 → `requests`로 Gemini REST API 직접 호출
+  - grpcio, protobuf 등 무거운 의존성 제거 → 앱 재시작 시간 단축
+- 메뉴명: `SHAP분석` → `탐지_이유_분석` (파일명 변경으로 사이드바 반영)
+
+### Files Changed
+- `pages/3_🔍_탐지_이유_분석.py`
+- `requirements.txt` (`google-generativeai` 삭제)
+
+---
+
+## [v0.4.1] — 2026-06-23
+
+### Added
+- Gemini API 키 미등록 시 안내 caption 표시
+- 오류 종류별(키 오류 / 할당량 초과 / 기타) 안내 메시지 분기
+
+### Fixed
+- AI 심층 분석 버튼 클릭 후 아무것도 표시되지 않던 문제
+  - 원인: 실패 시 `''` 저장 후 에러 메시지 없이 종료
+  - 해결: 오류 내용을 session_state에 저장해 원인별 안내
+
+### Files Changed
+- `pages/3_🔍_SHAP분석.py`
+
+---
+
+## [v0.4.0] — 2026-06-23
+
+### Added
+- 탐지 이유 분석 페이지 시각화 3종 추가
+  - **게임별 히트맵**: 상위 게임 × 상위 10개 항목 SHAP 패턴 비교 (발산형 색상)
+  - **영향 분포 dot plot**: 게임별 점으로 항목 영향 분포 시각화 (jitter, 최대 300건 샘플)
+  - **단계별 누적 waterfall**: 기본값→항목별 기여→최종 점수 흐름
+- AI 심층 분석 2레이어
+  - Layer 1: 규칙 기반 자동 분석 요약 (상시 무료, SHAP 값 기반 자연어 생성)
+  - Layer 2: Gemini REST API 선택 호출 (검토 대상 게임만, 세션 캐시, max 100 tokens)
+- `requirements.txt`: `google-generativeai` 추가
+
+### Changed
+- SHAP 용어 전면 제거 → 일반 사용자 친화 언어로 교체
+  - `SHAP 분석` → `탐지 이유 분석`, `SHAP value` → `영향도` 등
+- 각 섹션·차트에 비전문가용 설명 캡션 추가
+
+### Files Changed
+- `pages/3_🔍_SHAP분석.py` (전면 재작성)
+- `requirements.txt`
+
+---
+
 ## [v0.3.1] — 2026-06-23
 
 ### Fixed
