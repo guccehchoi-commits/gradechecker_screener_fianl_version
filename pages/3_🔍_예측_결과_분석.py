@@ -418,11 +418,6 @@ if not gemini_key:
 elif row_prob >= thr:
     cache_key = f'gem_{sel_game}'
 
-    # 성공 캐시만 유지 — 오류 캐시는 버튼 재표시 (재시도 가능)
-    _cached_val = st.session_state.get(cache_key)
-    if _cached_val and _cached_val[0] == 'err':
-        del st.session_state[cache_key]
-
     if cache_key not in st.session_state:
         if st.button('✨ AI 심층 분석', type='secondary'):
             with st.spinner('분석 중...'):
@@ -436,10 +431,10 @@ elif row_prob >= thr:
                         + (f" 추가보정:{boost_str}" if boost_str else '')
                         + "\n쉬운 한국어 2문장. 전문용어 금지."
                     )
-                    # google-generativeai SDK 없이 REST API 직접 호출
+                    # v1 엔드포인트 + gemini-1.5-flash (무료 1,500건/일)
                     _url = (
-                        "https://generativelanguage.googleapis.com/v1beta"
-                        f"/models/gemini-2.0-flash:generateContent?key={gemini_key}"
+                        "https://generativelanguage.googleapis.com/v1"
+                        f"/models/gemini-1.5-flash:generateContent?key={gemini_key}"
                     )
                     _body = {
                         "contents": [{"parts": [{"text": prompt}]}],
