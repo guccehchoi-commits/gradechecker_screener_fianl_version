@@ -422,15 +422,7 @@ elif row_prob >= thr:
         if st.button('✨ AI 심층 분석', type='secondary'):
             with st.spinner('분석 중...'):
                 try:
-                    import google.generativeai as genai
-                    genai.configure(api_key=gemini_key)
-                    mdl = genai.GenerativeModel(
-                        'gemini-1.5-flash',
-                        generation_config=genai.GenerationConfig(
-                            max_output_tokens=100,
-                            temperature=0.2,
-                        ),
-                    )
+                    import requests as _req
                     top2 = ','.join(f'{n}({v:+.2f})' for n, v in pos_feats[:2])
                     boost_str = boosts[0][0] if boosts else ''
                     prompt = (
@@ -439,10 +431,23 @@ elif row_prob >= thr:
                         + (f" 추가보정:{boost_str}" if boost_str else '')
                         + "\n쉬운 한국어 2문장. 전문용어 금지."
                     )
-                    resp = mdl.generate_content(prompt)
-                    st.session_state[cache_key] = ('ok', resp.text.strip())
+                    # google-generativeai SDK 없이 REST API 직접 호출
+                    _url = (
+                        "https://generativelanguage.googleapis.com/v1beta"
+                        f"/models/gemini-1.5-flash:generateContent?key={gemini_key}"
+                    )
+                    _body = {
+                        "contents": [{"parts": [{"text": prompt}]}],
+                        "generationConfig": {
+                            "maxOutputTokens": 100,
+                            "temperature": 0.2,
+                        },
+                    }
+                    _r = _req.post(_url, json=_body, timeout=15)
+                    _r.raise_for_status()
+                    _text = _r.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+                    st.session_state[cache_key] = ('ok', _text)
                 except Exception as e:
-                    # 오류 종류를 저장해 진단에 활용, 사용자에게는 부드럽게 표시
                     st.session_state[cache_key] = ('err', str(e))
 
     cached = st.session_state.get(cache_key)
