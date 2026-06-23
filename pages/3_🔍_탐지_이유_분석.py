@@ -73,7 +73,7 @@ _GL = {'전체이용가': '전체이용가', '12세이용가': '12세이용가',
 _LL = {'한국어': '한국어', '영어': '영어', '혼합': '한+영 혼합', '기타': '기타 언어'}
 
 def _pretty(raw: str) -> str:
-    if raw.startswith('remainder__'): return '__ft__'
+    if raw.startswith('remainder__') or raw.startswith('num__'): return '__ft__'
     n = raw.replace('cat__', '', 1)
     if n.startswith('grade__'):
         return f'등급: {_GL.get(n[7:], n[7:])}'
