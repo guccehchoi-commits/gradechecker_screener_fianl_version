@@ -4,27 +4,31 @@ import numpy as np
 import shap
 import plotly.graph_objects as go
 
-st.set_page_config(page_title='SHAP 분석', page_icon='🔍', layout='wide')
+st.set_page_config(page_title='탐지 이유 분석', page_icon='🔍', layout='wide')
 
-# ── 공통 색상 팔레트 ───────────────────────────────────────────
-C_RISK    = '#E63946'   # 위험 방향 (양수 SHAP)
-C_SAFE    = '#457B9D'   # 안전 방향 (음수 SHAP)
-C_MISSING = '#C1121F'   # 등급 미상
-C_FT      = '#7B2D8B'   # FastText 텍스트
-C_NEUTRAL = '#5C6D7E'   # 기타
+# ── 색상 팔레트 ───────────────────────────────────────────────
+C_RISK    = '#E63946'
+C_SAFE    = '#457B9D'
+C_MISSING = '#C1121F'
+C_FT      = '#7B2D8B'
+C_NEUTRAL = '#5C6D7E'
 
-def _plotly_base():
-    return dict(
+def _base_layout(**kwargs):
+    d = dict(
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
         font=dict(family='sans-serif', size=12, color='#1C1C1E'),
-        margin=dict(l=10, r=30, t=40, b=40),
+        margin=dict(l=10, r=30, t=44, b=40),
         hoverlabel=dict(bgcolor='white', font_size=12),
     )
+    d.update(kwargs)
+    return d
 
-# ── 상단 헤더 ─────────────────────────────────────────────────
-st.title('🔍 SHAP 분석 — 탐지 근거')
-st.caption('각 항목이 재분류 확률을 얼마나 높이거나 낮추는지 시각적으로 확인합니다.')
+_NO_TOOLBAR = {'displayModeBar': False}
+
+# ── 헤더 ──────────────────────────────────────────────────────
+st.title('🔍 탐지 이유 분석')
+st.caption('모델이 각 게임에 확률을 부여한 근거를 다양한 시각 자료로 보여줍니다.')
 
 # ── 데이터 확인 ───────────────────────────────────────────────
 if 'result' not in st.session_state:
@@ -47,164 +51,241 @@ X_trans = prep.transform(X_raw)
 
 # ── SHAP 계산 ────────────────────────────────────────────────
 @st.cache_resource
-def get_explainer(_clf):
+def _get_explainer(_clf):
     return shap.TreeExplainer(_clf)
 
-with st.spinner('SHAP 계산 중... (처음 한 번만 시간이 걸립니다)'):
-    explainer   = get_explainer(clf)
+with st.spinner('분석 데이터 준비 중... (처음 한 번만 시간이 걸립니다)'):
+    explainer   = _get_explainer(clf)
     shap_values = explainer.shap_values(X_trans)
 
 sv = shap_values[1] if isinstance(shap_values, list) else shap_values
-raw_feature_names = list(prep.get_feature_names_out())
+raw_names = list(prep.get_feature_names_out())
 
-# ── 피처 이름 한국어 변환 ──────────────────────────────────────
-_GRADE_LABEL = {
-    '전체이용가': '전체이용가', '12세이용가': '12세이용가',
-    '15세이용가': '15세이용가', '청소년이용불가': '청소년이용불가',
-    '미상': '미상 ★',
-}
-_LANG_LABEL = {
-    '한국어': '한국어', '영어': '영어', '혼합': '한+영 혼합', '기타': '기타 언어',
-}
+_ev = explainer.expected_value
+base_val = float(
+    _ev[1] if (hasattr(_ev, '__len__') and len(_ev) > 1)
+    else (_ev[0] if hasattr(_ev, '__len__') else _ev)
+)
 
-def pretty_name(raw: str) -> str:
-    if raw.startswith('remainder__'):
-        return '__ft__'
-    name = raw.replace('cat__', '', 1)
-    if name.startswith('grade__'):
-        v = name[len('grade__'):]
-        return f'등급: {_GRADE_LABEL.get(v, v)}'
-    if name.startswith('language_type__'):
-        v = name[len('language_type__'):]
-        return f'게임명 언어: {_LANG_LABEL.get(v, v)}'
-    if name.startswith('company__'):
-        return f'제조사: {name[len("company__"):]}'
-    if name.startswith('grade_company__'):
-        v = name[len('grade_company__'):]
-        parts = v.split('_', 1)
+# ── 피처 이름 변환 ───────────────────────────────────────────
+_GL = {'전체이용가': '전체이용가', '12세이용가': '12세이용가',
+       '15세이용가': '15세이용가', '청소년이용불가': '청소년이용불가', '미상': '미상 ★'}
+_LL = {'한국어': '한국어', '영어': '영어', '혼합': '한+영 혼합', '기타': '기타 언어'}
+
+def _pretty(raw: str) -> str:
+    if raw.startswith('remainder__'): return '__ft__'
+    n = raw.replace('cat__', '', 1)
+    if n.startswith('grade__'):
+        return f'등급: {_GL.get(n[7:], n[7:])}'
+    if n.startswith('language_type__'):
+        return f'게임명 언어: {_LL.get(n[15:], n[15:])}'
+    if n.startswith('company__'):
+        return f'제조사: {n[9:]}'
+    if n.startswith('grade_company__'):
+        parts = n[15:].split('_', 1)
         if len(parts) == 2:
-            g, c = parts
-            return f'등급+제조사: {_GRADE_LABEL.get(g, g)} / {c}'
-        return f'등급+제조사: {v}'
-    return name
+            return f'등급+제조사: {_GL.get(parts[0], parts[0])} / {parts[1]}'
+        return f'등급+제조사: {n[15:]}'
+    return n
 
-def aggregate_shap(sv_arr, raw_names):
-    """ft_* 차원을 단일 항목으로 집계. 1D(단일 샘플) / 2D(전체) 모두 처리."""
-    is_2d = sv_arr.ndim == 2
-    ft_idx    = [i for i, n in enumerate(raw_names) if pretty_name(n) == '__ft__']
-    other_idx = [i for i, n in enumerate(raw_names) if pretty_name(n) != '__ft__']
+def _short(n: str) -> str:
+    return (n.replace('등급: ', '').replace('제조사: ', '')
+             .replace('게임명 언어: ', '').replace('등급+제조사: ', '')
+             .replace('게임명 텍스트 (FastText)', '게임명').replace(' ★', '★'))
 
-    if is_2d:
-        other_sv = sv_arr[:, other_idx]
-        ft_agg   = sv_arr[:, ft_idx].sum(axis=1, keepdims=True) if ft_idx else None
-    else:
-        other_sv = sv_arr[other_idx]
-        ft_agg   = np.array([sv_arr[ft_idx].sum()]) if ft_idx else None
+def _color(name: str) -> str:
+    if '미상' in name: return C_MISSING
+    if 'FastText' in name or '게임명 텍스트' in name: return C_FT
+    return C_NEUTRAL
 
-    labels = [pretty_name(raw_names[i]) for i in other_idx]
+# ── ft 차원 집계 ─────────────────────────────────────────────
+def _aggregate(arr, rnames):
+    is2d = arr.ndim == 2
+    ft  = [i for i, n in enumerate(rnames) if _pretty(n) == '__ft__']
+    oth = [i for i, n in enumerate(rnames) if _pretty(n) != '__ft__']
+    sv_oth = arr[:, oth] if is2d else arr[oth]
+    ft_agg = (arr[:, ft].sum(axis=1, keepdims=True) if is2d else np.array([arr[ft].sum()])) if ft else None
+    labels = [_pretty(rnames[i]) for i in oth]
     if ft_agg is not None:
-        agg_sv = np.hstack([other_sv, ft_agg]) if is_2d else np.append(other_sv, ft_agg)
+        out = np.hstack([sv_oth, ft_agg]) if is2d else np.append(sv_oth, ft_agg)
         labels += ['게임명 텍스트 (FastText)']
     else:
-        agg_sv = other_sv
-    return agg_sv, labels
+        out = sv_oth
+    return out, labels
+
+# 전체 집계 행렬 (한 번만 계산)
+sv2d, labels = _aggregate(sv, raw_names)
+mean_abs = np.abs(sv2d).mean(axis=0)
+feat_rank = np.argsort(mean_abs)[::-1]
+
+# ── 게임 → 행 위치 변환 헬퍼 ─────────────────────────────────
+def _row_pos(game_name: str) -> int:
+    if 'game_name' in df_feat.columns:
+        m = df_feat[df_feat['game_name'] == game_name]
+        if len(m) > 0:
+            try:
+                return df_feat.index.get_loc(m.index[0])
+            except KeyError:
+                pass
+    # fallback: result 기준 순서로 추정
+    idx = result[result['game_name'] == game_name].index
+    return int(idx[0]) if len(idx) > 0 else 0
 
 st.divider()
 
 # ═══════════════════════════════════════════════════════════════
-# ① Global SHAP
+# ① 전체 게임 패턴
 # ═══════════════════════════════════════════════════════════════
-st.subheader('① 전체 피처 중요도')
+st.subheader('① 전체 게임에서 탐지에 영향을 준 항목')
+st.caption('모든 게임을 분석한 결과, 어떤 항목들이 재분류 가능성 판단에 가장 큰 영향을 줬는지 보여줍니다.')
 
-col_desc, col_ctrl = st.columns([3, 1])
-with col_desc:
-    st.caption('모든 게임에 걸쳐 각 항목이 예측에 얼마나 영향을 미치는지 평균낸 값입니다. 막대가 길수록 중요한 항목입니다.')
-with col_ctrl:
-    n_top = st.slider('상위 N개', 5, 20, 12, key='global_n')
+tab_rank, tab_dot = st.tabs(['📊 중요도 순위', '🔵 영향 분포'])
 
-sv_agg, labels_agg = aggregate_shap(sv, raw_feature_names)
-mean_abs = np.abs(sv_agg).mean(axis=0)
-top_idx  = np.argsort(mean_abs)[::-1][:n_top]
+with tab_rank:
+    n_top_g = st.slider('상위 N개 항목', 5, 20, 12, key='g_n')
+    idx_g  = feat_rank[:n_top_g]
+    names_g = [labels[i] for i in idx_g][::-1]
+    vals_g  = mean_abs[idx_g][::-1]
 
-# 내림차순 정렬 (Plotly horizontal bar는 아래→위 순서)
-names_plot = [labels_agg[i] for i in top_idx][::-1]
-vals_plot  = mean_abs[top_idx][::-1]
+    fig_rank = go.Figure(go.Bar(
+        x=vals_g, y=names_g, orientation='h',
+        marker=dict(color=[_color(n) for n in names_g], line=dict(width=0)),
+        hovertemplate='<b>%{y}</b><br>평균 영향력: %{x:.4f}<extra></extra>',
+    ))
+    fig_rank.update_layout(
+        **_base_layout(height=max(280, n_top_g * 36 + 60)),
+        xaxis=dict(title='평균 영향력 (높을수록 탐지에 많이 기여한 항목)', gridcolor='rgba(0,0,0,0.07)', zeroline=False),
+        yaxis=dict(tickfont=dict(size=11)), bargap=0.35,
+    )
+    st.plotly_chart(fig_rank, use_container_width=True, config=_NO_TOOLBAR)
+    c1, c2, c3 = st.columns(3)
+    c1.markdown(f'<span style="color:{C_MISSING}">■</span> 등급 미상 관련', unsafe_allow_html=True)
+    c2.markdown(f'<span style="color:{C_FT}">■</span> 게임명 텍스트 (FastText)', unsafe_allow_html=True)
+    c3.markdown(f'<span style="color:{C_NEUTRAL}">■</span> 등급 · 제조사 · 언어 등', unsafe_allow_html=True)
 
-bar_colors = []
-for n in names_plot:
-    if '미상' in n:
-        bar_colors.append(C_MISSING)
-    elif 'FastText' in n:
-        bar_colors.append(C_FT)
-    else:
-        bar_colors.append(C_NEUTRAL)
+with tab_dot:
+    st.caption(
+        '각 **점 하나가 게임 하나**입니다. '
+        '점이 오른쪽에 있을수록 그 항목이 해당 게임의 위험도를 높인 것이고, '
+        '왼쪽은 반대입니다. 점이 촘촘히 몰릴수록 많은 게임에 그 항목이 영향을 줬습니다.'
+    )
+    n_dot = st.slider('표시할 항목 수', 4, 12, 8, key='dot_n')
+    rng = np.random.default_rng(42)
+    n_games = len(sv2d)
+    samp = rng.choice(n_games, min(n_games, 300), replace=False)
 
-fig_global = go.Figure(go.Bar(
-    x=vals_plot,
-    y=names_plot,
-    orientation='h',
-    marker=dict(color=bar_colors, line=dict(width=0)),
-    hovertemplate='<b>%{y}</b><br>중요도: %{x:.4f}<extra></extra>',
-))
-fig_global.update_layout(
-    **_plotly_base(),
-    height=max(280, n_top * 36 + 60),
-    xaxis=dict(
-        title='mean |SHAP value|',
-        gridcolor='rgba(0,0,0,0.07)',
-        zeroline=False,
-    ),
-    yaxis=dict(tickfont=dict(size=11)),
-    bargap=0.35,
+    fig_dot = go.Figure()
+    for rank_i, feat_i in enumerate(feat_rank[:n_dot][::-1]):
+        fname = labels[feat_i]
+        xs = sv2d[samp, feat_i]
+        ys = rank_i + rng.uniform(-0.28, 0.28, len(samp))
+        fig_dot.add_trace(go.Scatter(
+            x=xs, y=ys, mode='markers',
+            marker=dict(color=[C_RISK if x > 0 else C_SAFE for x in xs],
+                        size=5, opacity=0.55, line=dict(width=0)),
+            hovertemplate=f'<b>{fname}</b><br>영향도: %{{x:+.4f}}<extra></extra>',
+            showlegend=False,
+        ))
+
+    fig_dot.add_vline(x=0, line=dict(color='#555', width=1, dash='dot'))
+    fig_dot.update_layout(
+        **_base_layout(height=max(300, n_dot * 46 + 80)),
+        xaxis=dict(title='영향도  (오른쪽 = 위험도 ▲ / 왼쪽 = 위험도 ▼)',
+                   gridcolor='rgba(0,0,0,0.07)', zeroline=False),
+        yaxis=dict(
+            tickvals=list(range(n_dot)),
+            ticktext=[labels[feat_rank[i]] for i in range(n_dot)][::-1],
+            tickfont=dict(size=11),
+        ),
+        annotations=[
+            dict(x=0.98, y=0.01, xref='paper', yref='paper',
+                 text='● 위험 방향', showarrow=False, font=dict(color=C_RISK, size=11), xanchor='right'),
+            dict(x=0.02, y=0.01, xref='paper', yref='paper',
+                 text='● 안전 방향', showarrow=False, font=dict(color=C_SAFE, size=11), xanchor='left'),
+        ],
+    )
+    st.plotly_chart(fig_dot, use_container_width=True, config=_NO_TOOLBAR)
+
+st.divider()
+
+# ═══════════════════════════════════════════════════════════════
+# ② 히트맵
+# ═══════════════════════════════════════════════════════════════
+st.subheader('② 게임별 탐지 패턴 히트맵')
+st.caption(
+    '상위 게임들을 항목별로 한눈에 비교합니다. '
+    '**빨간색이 짙을수록** 그 항목이 해당 게임의 위험도를 강하게 높인 것이고, '
+    '**파란색이 짙을수록** 반대 방향으로 작용한 것입니다.'
 )
-st.plotly_chart(fig_global, use_container_width=True, config={'displayModeBar': False})
 
-# 범례
-leg1, leg2, leg3 = st.columns(3)
-leg1.markdown(f'<span style="color:{C_MISSING}">■</span> 등급 미상 관련', unsafe_allow_html=True)
-leg2.markdown(f'<span style="color:{C_FT}">■</span> 게임명 텍스트 (FastText)', unsafe_allow_html=True)
-leg3.markdown(f'<span style="color:{C_NEUTRAL}">■</span> 등급 · 제조사 · 언어 등', unsafe_allow_html=True)
+n_hm = st.slider('표시할 게임 수 (확률 상위순)', 5, 30, 15, key='hm_n')
+N_HM_FEAT = 10
+
+# 상위 게임 행 위치 수집
+hm_names_found, hm_rows = [], []
+for gn in result['game_name'].head(n_hm).tolist():
+    pos = _row_pos(gn)
+    hm_rows.append(pos)
+    hm_names_found.append(gn[:16] + '…' if len(gn) > 16 else gn)
+
+if hm_rows:
+    hm_feat_idx = feat_rank[:N_HM_FEAT]
+    hm_xlabels  = [_short(labels[i]) for i in hm_feat_idx]
+    hm_matrix   = sv2d[hm_rows][:, hm_feat_idx]
+
+    fig_hm = go.Figure(go.Heatmap(
+        z=hm_matrix[::-1],
+        x=hm_xlabels,
+        y=hm_names_found[::-1],
+        colorscale=[[0, C_SAFE], [0.5, '#F5F5F5'], [1, C_RISK]],
+        zmid=0,
+        hovertemplate='<b>%{y}</b><br>항목: %{x}<br>영향도: %{z:+.4f}<extra></extra>',
+        colorbar=dict(title='영향도', tickformat='+.2f', len=0.8, thickness=14),
+    ))
+    fig_hm.update_layout(
+        **_base_layout(
+            height=max(300, len(hm_rows) * 30 + 110),
+            margin=dict(l=130, r=80, t=60, b=30),
+        ),
+        xaxis=dict(side='top', tickangle=-30, tickfont=dict(size=10)),
+        yaxis=dict(tickfont=dict(size=10)),
+    )
+    st.plotly_chart(fig_hm, use_container_width=True, config=_NO_TOOLBAR)
+else:
+    st.info('히트맵을 표시하려면 게임이 충분히 있어야 합니다.')
 
 st.divider()
 
 # ═══════════════════════════════════════════════════════════════
-# ② Local SHAP
+# ③ 개별 게임 분석
 # ═══════════════════════════════════════════════════════════════
-st.subheader('② 개별 게임 탐지 근거')
-st.caption('게임을 선택하면 해당 게임이 왜 이 확률을 받았는지 항목별로 분해합니다.')
+st.subheader('③ 이 게임의 탐지 이유')
+st.caption('게임을 선택하면, 모델이 왜 이 확률을 줬는지 항목별로 분해해서 보여줍니다.')
 
-game_options = result['game_name'].tolist()
 sel_game = st.selectbox(
     '게임 선택',
-    game_options,
-    format_func=lambda n: (
-        f'{n}  ·  확률 {result.loc[result["game_name"]==n, "재분류_확률"].values[0]:.4f}'
-    ),
+    result['game_name'].tolist(),
+    format_func=lambda n: f'{n}  ·  확률 {result.loc[result["game_name"]==n,"재분류_확률"].values[0]:.4f}',
 )
 
-# 인덱스 버그 수정: pandas label → integer position
 game_row = result[result['game_name'] == sel_game]
 if len(game_row) == 0:
     st.error('해당 게임을 찾을 수 없습니다.')
     st.stop()
 
-if 'game_name' in df_feat.columns:
-    match = df_feat[df_feat['game_name'] == sel_game]
-    feat_label_idx = match.index[0] if len(match) > 0 else game_row.index[0]
-else:
-    feat_label_idx = game_row.index[0]
-
-try:
-    row_pos = df_feat.index.get_loc(feat_label_idx)
-except KeyError:
-    row_pos = 0
-
-row_sv   = sv[row_pos]
+pos      = _row_pos(sel_game)
+row_sv   = sv2d[pos]
 row_prob = float(game_row['재분류_확률'].values[0])
 level    = risk_label(row_prob, thr)
 color    = risk_color(level)
 
-# ── 위험도 카드 ───────────────────────────────────────────────
+feat_label_idx = (df_feat[df_feat['game_name'] == sel_game].index[0]
+                  if 'game_name' in df_feat.columns and len(df_feat[df_feat['game_name'] == sel_game]) > 0
+                  else game_row.index[0])
+grade_val = str(df_feat.loc[feat_label_idx, 'grade']) if 'grade' in df_feat.columns else '미상'
+genre_val = str(df_feat.loc[feat_label_idx, 'genre']) if 'genre' in df_feat.columns else ''
+
+# 위험도 카드
 m1, m2, m3 = st.columns(3)
 m1.metric('재분류 확률', f'{row_prob:.4f}')
 m2.metric('위험 등급', level)
@@ -217,98 +298,171 @@ else:
 
 st.markdown('')
 
-# ── Local SHAP 차트 ───────────────────────────────────────────
-row_sv_agg, labels_local = aggregate_shap(row_sv, raw_feature_names)
+# Local SHAP 준비
+top_n  = 10
+top_idx = np.argsort(np.abs(row_sv))[::-1][:top_n]
+loc_names = [labels[i] for i in top_idx]
+loc_vals  = row_sv[top_idx]
+loc_names_r = loc_names[::-1]
+loc_vals_r  = loc_vals[::-1]
 
-top_n_local   = 12
-top_local_idx = np.argsort(np.abs(row_sv_agg))[::-1][:top_n_local]
-local_names   = [labels_local[i] for i in top_local_idx][::-1]
-local_vals    = row_sv_agg[top_local_idx][::-1]
+pos_feats = [(loc_names[i], loc_vals[i]) for i in range(len(loc_vals)) if loc_vals[i] > 0.01]
+neg_feats = [(loc_names[i], loc_vals[i]) for i in range(len(loc_vals)) if loc_vals[i] < -0.01]
 
-bar_colors_local = [C_RISK if v > 0 else C_SAFE for v in local_vals]
+# 규칙 기반 보정 체크 (차트보다 먼저)
+boosts = []
+if GAMBLING_PATTERN.search(str(sel_game)) and grade_val != '청소년이용불가':
+    boosts.append(('도박 관련 키워드 감지', '게임명에 도박·사행 키워드가 포함되어 확률 +0.20 보정 적용'))
+if genre_val in BETTING_GENRES:
+    boosts.append(('베팅성 장르 감지', '장르가 보드게임(베팅성)으로 확률 +0.05 보정 적용'))
 
-# 호버 텍스트: 방향 설명 포함
-hover_texts = []
-for n, v in zip(local_names, local_vals):
-    direction = '위험도 ▲' if v > 0 else '위험도 ▼'
-    hover_texts.append(f'<b>{n}</b><br>SHAP: {v:+.4f}  ({direction})')
+# ── 차트 탭 ──────────────────────────────────────────────────
+tab_wf, tab_bar = st.tabs(['📈 단계별 누적 분석', '📊 항목별 영향도'])
 
-fig_local = go.Figure()
-fig_local.add_trace(go.Bar(
-    x=local_vals,
-    y=local_names,
-    orientation='h',
-    marker=dict(color=bar_colors_local, line=dict(width=0)),
-    hovertemplate='%{customdata}<extra></extra>',
-    customdata=hover_texts,
-))
-fig_local.add_vline(x=0, line=dict(color='#444', width=1))
-fig_local.update_layout(
-    **_plotly_base(),
-    height=max(320, top_n_local * 38 + 80),
-    title=dict(text=f'<b>{sel_game}</b> — 항목별 탐지 기여도', font=dict(size=14)),
-    xaxis=dict(
-        title='SHAP value',
-        gridcolor='rgba(0,0,0,0.07)',
-        zeroline=False,
-        tickformat='+.3f',
-    ),
-    yaxis=dict(tickfont=dict(size=11)),
-    bargap=0.3,
-    annotations=[
-        dict(x=max(local_vals) * 0.95, y=0.02, xref='x', yref='paper',
-             text='위험도 ▲', showarrow=False,
-             font=dict(color=C_RISK, size=11), xanchor='right'),
-        dict(x=min(local_vals) * 0.95, y=0.02, xref='x', yref='paper',
-             text='위험도 ▼', showarrow=False,
-             font=dict(color=C_SAFE, size=11), xanchor='left'),
-    ] if len(local_vals) > 0 and max(local_vals) > 0 and min(local_vals) < 0 else [],
-)
-st.plotly_chart(fig_local, use_container_width=True, config={'displayModeBar': False})
+with tab_wf:
+    st.caption(
+        '게임의 기본 점수(전체 평균)에서 시작해서 각 항목이 점수를 얼마씩 더하거나 뺐는지 순서대로 보여줍니다. '
+        '최종 탐지 점수가 높을수록 재분류 확률이 높습니다.'
+    )
+    wf_n   = 7
+    wf_idx = np.argsort(np.abs(row_sv))[::-1][:wf_n]
+    wf_names = [labels[i] for i in wf_idx]
+    wf_vals  = row_sv[wf_idx]
+    remainder = row_sv.sum() - wf_vals.sum()
 
-# ── 범례 ──────────────────────────────────────────────────────
-lc1, lc2 = st.columns(2)
-lc1.markdown(f'<span style="color:{C_RISK}">■</span> **빨간색** — 재분류 가능성을 높이는 항목', unsafe_allow_html=True)
-lc2.markdown(f'<span style="color:{C_SAFE}">■</span> **파란색** — 재분류 가능성을 낮추는 항목', unsafe_allow_html=True)
+    fig_wf = go.Figure(go.Waterfall(
+        orientation='h',
+        measure=['absolute'] + ['relative'] * wf_n + ['relative', 'total'],
+        y=['기본값 (전체 평균)'] + wf_names + ['기타 요인 합산', '최종 탐지 점수'],
+        x=[base_val] + list(wf_vals) + [remainder, 0],
+        connector=dict(line=dict(color='rgba(120,120,120,0.25)', width=1)),
+        increasing=dict(marker=dict(color=C_RISK)),
+        decreasing=dict(marker=dict(color=C_SAFE)),
+        totals=dict(marker=dict(color='#444444', line=dict(color='#222', width=1))),
+        hovertemplate='<b>%{y}</b><br>영향도: %{x:+.4f}<extra></extra>',
+    ))
+    fig_wf.update_layout(
+        **_base_layout(height=max(320, (wf_n + 3) * 46 + 80)),
+        title=dict(text=f'<b>{sel_game}</b> — 단계별 탐지 점수 누적', font=dict(size=13)),
+        xaxis=dict(title='탐지 점수', gridcolor='rgba(0,0,0,0.07)', zeroline=False),
+        yaxis=dict(tickfont=dict(size=11), autorange='reversed'),
+    )
+    st.plotly_chart(fig_wf, use_container_width=True, config=_NO_TOOLBAR)
+    st.caption('※ 탐지 점수는 내부 계산값(로그 오즈)입니다. 최종 재분류 확률은 이를 0~1 사이로 변환한 값입니다.')
 
-# ── 탐지 사유 자동 요약 ───────────────────────────────────────
-pos_feats = [(local_names[i], local_vals[i]) for i in range(len(local_vals)) if local_vals[i] > 0.01]
-neg_feats = [(local_names[i], local_vals[i]) for i in range(len(local_vals)) if local_vals[i] < -0.01]
+with tab_bar:
+    st.caption(
+        '**빨간 막대**가 길수록 그 항목이 재분류 가능성을 크게 높인 것입니다. '
+        '**파란 막대**는 반대로 가능성을 낮추는 방향으로 작용한 것입니다.'
+    )
+    fig_bar = go.Figure(go.Bar(
+        x=loc_vals_r, y=loc_names_r, orientation='h',
+        marker=dict(color=[C_RISK if v > 0 else C_SAFE for v in loc_vals_r], line=dict(width=0)),
+        hovertemplate='<b>%{y}</b><br>영향도: %{x:+.4f}<br>%{customdata}<extra></extra>',
+        customdata=['위험도 ▲' if v > 0 else '위험도 ▼' for v in loc_vals_r],
+    ))
+    fig_bar.add_vline(x=0, line=dict(color='#555', width=1))
+    fig_bar.update_layout(
+        **_base_layout(height=max(320, top_n * 40 + 80)),
+        title=dict(text=f'<b>{sel_game}</b> — 항목별 영향도', font=dict(size=13)),
+        xaxis=dict(title='영향도', gridcolor='rgba(0,0,0,0.07)', zeroline=False, tickformat='+.3f'),
+        yaxis=dict(tickfont=dict(size=11)), bargap=0.3,
+    )
+    st.plotly_chart(fig_bar, use_container_width=True, config=_NO_TOOLBAR)
+    lc1, lc2 = st.columns(2)
+    lc1.markdown(f'<span style="color:{C_RISK}">■</span> **빨간색** — 재분류 가능성을 높이는 항목', unsafe_allow_html=True)
+    lc2.markdown(f'<span style="color:{C_SAFE}">■</span> **파란색** — 재분류 가능성을 낮추는 항목', unsafe_allow_html=True)
 
-if pos_feats:
-    top3 = ' · '.join([f[0] for f in pos_feats[:3]])
-    if level == '고위험':
-        st.error(f'**주요 탐지 사유**: {top3}')
-    elif level == '검토 대상':
-        st.warning(f'**주요 탐지 사유**: {top3}')
-    else:
-        st.info(f'**주요 영향 항목**: {top3}')
-if neg_feats:
-    neg2 = ' · '.join([f[0] for f in neg_feats[:2]])
-    st.caption(f'위험도를 낮추는 항목: {neg2}')
+st.divider()
+
+# ── 자동 분석 요약 (Layer 1, 항상 무료) ──────────────────────
+def _rule_insight(game, pos_f, neg_f, prob, thr_, boosts_):
+    lines = []
+    if pos_f:
+        n0, v0 = pos_f[0]
+        if '미상' in n0:
+            lines.append(f"**{game}** 은(는) 등급이 '미상'으로 분류되어 재분류 가능성을 가장 크게 높이는 요인이 됐습니다.")
+        elif 'FastText' in n0 or '텍스트' in n0:
+            lines.append(f"**{game}** 의 게임명 패턴이 과거 재분류 사례와 유사하게 분석됐습니다.")
+        elif '제조사' in n0:
+            co = n0.split(': ')[-1] if ': ' in n0 else ''
+            lines.append(f"**{game}** 은(는) {'제조사(' + co + ') 이력이' if co else '제조사 이력이'} 재분류 가능성을 높이는 방향으로 작용했습니다.")
+        else:
+            lines.append(f"**{game}** 은(는) '{n0}' 항목이 재분류 가능성을 가장 크게 높이는 요인으로 분석됩니다.")
+    if len(pos_f) >= 2:
+        n1 = pos_f[1][0]
+        if n1 != (pos_f[0][0] if pos_f else ''):
+            lines.append(f"'{n1}' 항목도 위험도를 높이는 방향으로 추가 작용했습니다.")
+    if boosts_:
+        lines.append("게임명에 도박·사행 관련 키워드가 감지되어 규칙 기반 보정이 추가 적용됐습니다.")
+    if neg_f and prob < 0.80:
+        lines.append(f"다만 '{neg_f[0][0]}' 항목은 위험도를 낮추는 방향으로 작용했습니다.")
+    if not lines:
+        lines.append(f"탐지에 영향을 준 항목들이 복합적으로 작용하여 최종 확률 {prob:.0%}가 산출됐습니다.")
+    return ' '.join(lines[:3])
+
+st.markdown('**💡 자동 분석 요약**')
+auto_txt = _rule_insight(sel_game, pos_feats, neg_feats, row_prob, thr, boosts)
+if level == '고위험':
+    st.error(auto_txt)
+elif level == '검토 대상':
+    st.warning(auto_txt)
+else:
+    st.info(auto_txt)
+
+# ── AI 심층 분석 (Layer 2 — Gemini, 버튼 클릭 시에만) ────────
+gemini_key = st.secrets.get('GEMINI_API_KEY', '')
+if gemini_key:
+    cache_key = f'gem_{sel_game}_{round(row_prob, 2)}'
+    col_btn, col_note = st.columns([1, 3])
+    with col_btn:
+        run_ai = st.button('✨ AI 심층 분석', type='secondary', use_container_width=True)
+    with col_note:
+        st.caption('Gemini AI가 탐지 이유를 추가로 해석합니다. 같은 게임은 다시 클릭해도 재호출 없이 캐시를 사용합니다.')
+
+    if run_ai or cache_key in st.session_state:
+        if cache_key not in st.session_state:
+            with st.spinner('AI 분석 중...'):
+                try:
+                    import google.generativeai as genai
+                    genai.configure(api_key=gemini_key)
+                    mdl = genai.GenerativeModel(
+                        'gemini-1.5-flash',
+                        generation_config=genai.GenerationConfig(
+                            max_output_tokens=150, temperature=0.3,
+                        ),
+                    )
+                    top3 = ', '.join(f'{n}({v:+.2f})' for n, v in pos_feats[:3])
+                    boost_str = ', '.join(b[0] for b in boosts) if boosts else '없음'
+                    prompt = (
+                        f"게임물 등급재분류 위험도 분석 결과를 비전문가에게 2문장으로 설명.\n"
+                        f"게임: {sel_game} / 등급: {grade_val} / 확률: {row_prob:.0%}\n"
+                        f"주요요인: {top3} / 추가보정: {boost_str}\n"
+                        f"SHAP·모델 언급 없이, 쉬운 한국어로, 왜 재분류 가능성이 있는지만 설명."
+                    )
+                    resp = mdl.generate_content(prompt)
+                    st.session_state[cache_key] = resp.text.strip()
+                except Exception:
+                    st.session_state[cache_key] = None
+
+        ai_txt = st.session_state.get(cache_key)
+        if ai_txt:
+            st.markdown('**🤖 AI 분석**')
+            st.success(ai_txt)
+        else:
+            st.warning('AI 분석을 불러올 수 없습니다. 자동 분석 요약을 참고해 주세요.')
 
 st.divider()
 
 # ═══════════════════════════════════════════════════════════════
-# ③ 규칙 기반 보정 내역
+# ④ 규칙 기반 보정 내역
 # ═══════════════════════════════════════════════════════════════
-st.subheader('③ 규칙 기반 보정 내역')
+st.subheader('④ 규칙 기반 보정 내역')
 st.caption('모델 점수 외에 게임명·장르 규칙으로 추가 보정된 항목이 있으면 표시됩니다.')
-
-genre_val = df_feat.loc[feat_label_idx, 'genre'] if 'genre' in df_feat.columns else ''
-boosts = []
-
-if GAMBLING_PATTERN.search(str(sel_game)):
-    grade_val = df_feat.loc[feat_label_idx, 'grade'] if 'grade' in df_feat.columns else ''
-    if str(grade_val) != '청소년이용불가':
-        boosts.append(('도박 관련 키워드 감지', '게임명에 도박·사행 키워드가 포함되어 확률 +0.20 보정 적용'))
-
-if str(genre_val) in BETTING_GENRES:
-    boosts.append(('베팅성 장르 감지', '장르가 보드게임(베팅성)으로 확률 +0.05 보정 적용'))
 
 if boosts:
     for label, desc in boosts:
         st.warning(f'**⚠️ {label}** — {desc}')
-    st.caption('※ 위 보정은 SHAP 차트에 직접 반영되지 않으며, 최종 확률에 더해진 별도 규칙입니다.')
+    st.caption('※ 위 보정은 차트에 직접 반영되지 않으며, 최종 확률에 더해진 별도 규칙입니다.')
 else:
     st.success('규칙 기반 보정 없음 — 위 확률은 모델 예측값 그대로입니다.')
