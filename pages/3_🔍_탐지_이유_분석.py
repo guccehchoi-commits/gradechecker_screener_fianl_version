@@ -411,15 +411,12 @@ else:
     st.info(auto_txt)
 
 # ── AI 심층 분석 (Layer 2 — Gemini) ─────────────────────────
-# 설계 원칙:
-#   1) 검토 대상 게임(≥thr)에만 버튼 노출 → 저위험 게임 호출 차단
-#   2) 캐시 키 = 게임명(session 단위) → 동일 게임 재클릭 시 재호출 없음
-#   3) 캐시 존재 시 버튼 자체를 숨김 → 이중 호출 물리적 차단
-#   4) 실패(quota·네트워크) 시 '' 저장 → 버튼 재노출 없음, 에러 미표시
-#   5) 프롬프트 최소화: input ~55 tokens / output max 100 tokens
 gemini_key = st.secrets.get('GEMINI_API_KEY', '')
-if gemini_key and row_prob >= thr:
-    cache_key = f'gem_{sel_game}'   # 세션 내 게임명 단위 캐시
+
+if not gemini_key:
+    st.caption('🔑 AI 심층 분석 기능을 사용하려면 Streamlit Secrets에 GEMINI_API_KEY를 등록해 주세요.')
+elif row_prob >= thr:
+    cache_key = f'gem_{sel_game}'
 
     if cache_key not in st.session_state:
         if st.button('✨ AI 심층 분석', type='secondary'):
@@ -430,8 +427,8 @@ if gemini_key and row_prob >= thr:
                     mdl = genai.GenerativeModel(
                         'gemini-1.5-flash',
                         generation_config=genai.GenerationConfig(
-                            max_output_tokens=100,  # 토큰 절감
-                            temperature=0.2,         # 일관성 ↑ → 재시도 필요성 ↓
+                            max_output_tokens=100,
+                            temperature=0.2,
                         ),
                     )
                     top2 = ','.join(f'{n}({v:+.2f})' for n, v in pos_feats[:2])
@@ -443,15 +440,25 @@ if gemini_key and row_prob >= thr:
                         + "\n쉬운 한국어 2문장. 전문용어 금지."
                     )
                     resp = mdl.generate_content(prompt)
-                    st.session_state[cache_key] = resp.text.strip()
-                except Exception:
-                    st.session_state[cache_key] = ''  # 실패 기록 → 버튼 재표시 차단
+                    st.session_state[cache_key] = ('ok', resp.text.strip())
+                except Exception as e:
+                    # 오류 종류를 저장해 진단에 활용, 사용자에게는 부드럽게 표시
+                    st.session_state[cache_key] = ('err', str(e))
 
-    # 성공 시에만 표시 — 실패(빈 문자열)는 조용히 무시 (Layer 1이 이미 표시됨)
-    ai_txt = st.session_state.get(cache_key, '')
-    if ai_txt:
-        st.markdown('**🤖 AI 심층 분석**')
-        st.success(ai_txt)
+    cached = st.session_state.get(cache_key)
+    if cached:
+        status, content = cached
+        if status == 'ok' and content:
+            st.markdown('**🤖 AI 심층 분석**')
+            st.success(content)
+        elif status == 'err':
+            # API 키 미등록 / 할당량 초과 / 네트워크 오류 등 구분 안내
+            if 'API_KEY' in content or 'api_key' in content or 'invalid' in content.lower():
+                st.caption('🔑 API 키가 올바르지 않습니다. Streamlit Secrets의 GEMINI_API_KEY를 확인해 주세요.')
+            elif '429' in content or 'quota' in content.lower() or 'exhausted' in content.lower():
+                st.caption('📊 오늘 AI 분석 횟수를 모두 사용했습니다. 내일 다시 이용하거나 위 자동 요약을 참고해 주세요.')
+            else:
+                st.caption('⚠️ AI 분석 연결에 실패했습니다. 잠시 후 다시 시도하거나 위 자동 요약을 참고해 주세요.')
 
 st.divider()
 
