@@ -469,6 +469,8 @@ elif row_prob >= thr:
                 st.caption('🔑 API 키가 올바르지 않습니다. Streamlit Secrets의 GEMINI_API_KEY를 확인해 주세요.')
             else:
                 st.caption('⚠️ AI 분석 연결에 실패했습니다. 잠시 후 다시 시도해 주세요.')
+            with st.expander('🔧 디버그'):
+                st.code(content)
 
 st.divider()
 
