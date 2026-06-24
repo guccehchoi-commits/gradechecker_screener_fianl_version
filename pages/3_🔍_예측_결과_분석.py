@@ -422,7 +422,8 @@ elif row_prob >= thr:
         if st.button('✨ AI 심층 분석', type='secondary'):
             with st.spinner('분석 중...'):
                 try:
-                    import requests as _req
+                    import google.generativeai as genai
+                    genai.configure(api_key=gemini_key)
                     top2 = ','.join(f'{n}({v:+.2f})' for n, v in pos_feats[:2])
                     boost_str = boosts[0][0] if boosts else ''
                     prompt = (
@@ -431,29 +432,18 @@ elif row_prob >= thr:
                         + (f" 추가보정:{boost_str}" if boost_str else '')
                         + "\n쉬운 한국어 2문장. 전문용어 금지."
                     )
-                    _url = (
-                        "https://generativelanguage.googleapis.com/v1beta"
-                        "/models/gemini-1.5-flash:generateContent"
+                    _model = genai.GenerativeModel(
+                        'gemini-2.0-flash',
+                        generation_config=genai.types.GenerationConfig(
+                            max_output_tokens=100,
+                            temperature=0.2,
+                        ),
                     )
-                    _body = {
-                        "contents": [{"parts": [{"text": prompt}]}],
-                        "generationConfig": {
-                            "maxOutputTokens": 100,
-                            "temperature": 0.2,
-                        },
-                    }
-                    _r = _req.post(
-                        _url, json=_body, timeout=15,
-                        headers={"x-goog-api-key": gemini_key},
-                    )
-                    _r.raise_for_status()
-                    _text = _r.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+                    _resp = _model.generate_content(prompt)
+                    _text = _resp.text.strip()
                     st.session_state[cache_key] = ('ok', _text)
                 except Exception as e:
-                    try:
-                        err_msg = _r.text
-                    except Exception:
-                        err_msg = str(e)
+                    err_msg = str(e)
                     if gemini_key and gemini_key in err_msg:
                         err_msg = err_msg.replace(gemini_key, '***')
                     st.session_state[cache_key] = ('err', err_msg)
