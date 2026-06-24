@@ -410,13 +410,13 @@ elif level == '검토 대상':
 else:
     st.info(auto_txt)
 
-# ── AI 심층 분석 (Layer 2 — HuggingFace) ─────────────────────
+# ── AI 심층 분석 (Layer 2 — Hugging Face) ───────────────────
 hf_key = st.secrets.get('HF_API_KEY', '')
 
 if not hf_key:
     st.caption('🔑 AI 심층 분석 기능을 사용하려면 Streamlit Secrets에 HF_API_KEY를 등록해 주세요.')
 elif row_prob >= thr:
-    cache_key = f'gem_{sel_game}'
+    cache_key = f'hf_{sel_game}'
 
     if cache_key not in st.session_state:
         if st.button('✨ AI 심층 분석', type='secondary'):
@@ -432,25 +432,21 @@ elif row_prob >= thr:
                         + "\n쉬운 한국어 2문장. 전문용어 금지."
                     )
                     _r = _req.post(
-                        'https://router.huggingface.co/hf-inference/models/Qwen/Qwen2.5-7B-Instruct/v1/chat/completions',
-                        headers={'Authorization': f'Bearer {hf_key}'},
+                        "https://router.huggingface.co/v1/chat/completions",
+                        headers={"Authorization": f"Bearer {hf_key}"},
                         json={
-                            'model': 'Qwen/Qwen2.5-7B-Instruct',
-                            'messages': [{'role': 'user', 'content': prompt}],
-                            'max_tokens': 100,
-                            'temperature': 0.2,
+                            "model": "Qwen/Qwen2.5-7B-Instruct:cheapest",
+                            "messages": [{"role": "user", "content": prompt}],
+                            "max_tokens": 100,
+                            "temperature": 0.2,
                         },
                         timeout=30,
                     )
-                    try:
-                        err_body = _r.text
-                    except Exception:
-                        err_body = ''
                     _r.raise_for_status()
-                    _text = _r.json()['choices'][0]['message']['content'].strip()
+                    _text = _r.json()["choices"][0]["message"]["content"].strip()
                     st.session_state[cache_key] = ('ok', _text)
                 except Exception as e:
-                    err_msg = err_body if err_body else str(e)
+                    err_msg = str(e)
                     if hf_key and hf_key in err_msg:
                         err_msg = err_msg.replace(hf_key, '***')
                     st.session_state[cache_key] = ('err', err_msg)
@@ -462,10 +458,12 @@ elif row_prob >= thr:
             st.markdown('**🤖 AI 심층 분석**')
             st.success(content)
         elif status == 'err':
-            if '429' in content or 'quota' in content.lower() or 'rate' in content.lower():
-                st.caption('📊 AI 분석 일일 한도를 초과했습니다. 내일 다시 이용하거나 위 자동 요약을 참고해 주세요.')
-            elif '401' in content or '403' in content or 'invalid' in content.lower():
+            if '429' in content or 'quota' in content.lower() or 'rate limit' in content.lower():
+                st.caption('📊 AI 분석 한도를 초과했습니다. 잠시 후 다시 이용하거나 위 자동 요약을 참고해 주세요.')
+            elif 'unauthorized' in content.lower() or '401' in content or '403' in content:
                 st.caption('🔑 API 키가 올바르지 않습니다. Streamlit Secrets의 HF_API_KEY를 확인해 주세요.')
+            elif '404' in content:
+                st.caption('⚠️ 모델을 찾을 수 없습니다. 모델명을 확인해 주세요.')
             else:
                 st.caption('⚠️ AI 분석 연결에 실패했습니다. 잠시 후 다시 시도해 주세요.')
             with st.expander('🔧 디버그'):
