@@ -7,16 +7,8 @@ st.set_page_config(
     initial_sidebar_state='expanded',
 )
 
-# ── 로고 (내비게이션 메뉴 상단 고정, 사이드바 열림/닫힘 모두) ──
-st.logo('gucc_logo.png', size='large', icon_image='gucc_logo.png')
-st.markdown("""
-<style>
-[data-testid="stLogo"] {
-    height: 90px !important;
-    max-width: 240px !important;
-}
-</style>
-""", unsafe_allow_html=True)
+from utils.logo import render_logo
+render_logo()
 
 # ── 사이드바 ───────────────────────────────────────────────────
 st.sidebar.info(
