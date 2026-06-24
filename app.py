@@ -8,8 +8,7 @@ st.set_page_config(
 )
 
 # ── 사이드바 ───────────────────────────────────────────────────
-st.sidebar.title('🎮 GUCC')
-st.sidebar.caption('게임 등급재분류 이상탐지 대시보드')
+st.sidebar.image('게임이용자보호센터_국문_로고png.png', use_container_width=True)
 st.sidebar.divider()
 st.sidebar.info(
     '**사용 순서**\n\n'
