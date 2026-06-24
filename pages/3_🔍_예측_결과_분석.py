@@ -433,7 +433,7 @@ elif row_prob >= thr:
                     )
                     _url = (
                         "https://generativelanguage.googleapis.com/v1beta"
-                        "/models/gemini-1.5-flash:generateContent"
+                        "/models/gemini-2.0-flash-lite:generateContent"
                     )
                     _body = {
                         "contents": [{"parts": [{"text": prompt}]}],
