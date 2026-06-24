@@ -432,17 +432,18 @@ elif row_prob >= thr:
                         + "\n쉬운 한국어 2문장. 전문용어 금지."
                     )
                     _r = _req.post(
-                        'https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.3',
+                        'https://router.huggingface.co/hf-inference/models/mistralai/Mistral-7B-Instruct-v0.3/v1/chat/completions',
                         headers={'Authorization': f'Bearer {hf_key}'},
-                        json={'inputs': prompt, 'parameters': {'max_new_tokens': 100, 'temperature': 0.2}},
+                        json={
+                            'model': 'mistralai/Mistral-7B-Instruct-v0.3',
+                            'messages': [{'role': 'user', 'content': prompt}],
+                            'max_tokens': 100,
+                            'temperature': 0.2,
+                        },
                         timeout=30,
                     )
                     _r.raise_for_status()
-                    result = _r.json()
-                    if isinstance(result, list):
-                        _text = result[0].get('generated_text', '').replace(prompt, '').strip()
-                    else:
-                        _text = str(result)
+                    _text = _r.json()['choices'][0]['message']['content'].strip()
                     st.session_state[cache_key] = ('ok', _text)
                 except Exception as e:
                     err_msg = str(e)
