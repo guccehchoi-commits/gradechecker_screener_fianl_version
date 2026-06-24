@@ -5,6 +5,7 @@ import shap
 import plotly.graph_objects as go
 
 st.set_page_config(page_title='탐지 이유 분석', page_icon='🔍', layout='wide')
+st.logo('gucc_logo.png', size='large', icon_image='gucc_logo.png')
 
 # ── 색상 팔레트 ───────────────────────────────────────────────
 C_RISK    = '#E63946'

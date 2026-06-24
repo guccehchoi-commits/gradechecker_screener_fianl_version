@@ -4,6 +4,7 @@ import numpy as np
 from utils.model import risk_label, risk_color
 from utils.preprocess import is_fortnite
 st.set_page_config(page_title='예측 결과', page_icon='📊', layout='wide')
+st.logo('gucc_logo.png', size='large', icon_image='gucc_logo.png')
 st.title('📊 예측 결과')
 # ── 데이터 확인 ────────────────────────────────────────────────
 if 'result' not in st.session_state:

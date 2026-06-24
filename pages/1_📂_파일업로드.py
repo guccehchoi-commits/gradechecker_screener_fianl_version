@@ -3,6 +3,7 @@ import pandas as pd
 from utils.preprocess import run_preprocess, load_fasttext, apply_genre_boost, apply_gambling_keyword_boost
 from utils.model import load_model, predict
 st.set_page_config(page_title='파일 업로드', page_icon='📂', layout='wide')
+st.logo('gucc_logo.png', size='large', icon_image='gucc_logo.png')
 st.title('📂 파일 업로드')
 st.caption('분석할 게임물 파일을 업로드하세요. Excel·CSV 모두 지원하며 컬럼명을 자동으로 감지합니다.')
 st.divider()
