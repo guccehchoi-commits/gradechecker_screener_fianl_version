@@ -5,7 +5,7 @@ def render_logo():
     st.markdown("""
 <style>
 [data-testid="stLogo"] {
-    height: 130px !important;
+    height: 160px !important;
     max-width: 300px !important;
     width: auto !important;
 }
