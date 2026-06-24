@@ -79,7 +79,7 @@ st.sidebar.caption('※ 예측 결과는 우선 재검토 순위 제공 목적\n
 
 # ── 홈 화면 ───────────────────────────────────────────────────
 st.title('🎯 GRADE CHECKER')
-st.markdown('게임물 데이터를 업로드하면 등급재분류 확률이 높은 게임을 자동으로 판별하는 **게임물 등급재분류 가능성 AI 예측 서비스**입니다.')
+st.markdown('<p style="font-size:1.15rem;">게임물 데이터를 업로드하면 등급재분류 확률이 높은 게임을 자동으로 판별하는 <strong>게임물 등급재분류 가능성 AI 예측 서비스</strong>입니다.</p>', unsafe_allow_html=True)
 # st.divider()
 
 # col1, col2, col3 = st.columns(3)
