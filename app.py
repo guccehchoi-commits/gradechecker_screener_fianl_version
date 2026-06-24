@@ -7,8 +7,10 @@ st.set_page_config(
     initial_sidebar_state='expanded',
 )
 
+# ── 로고 (내비게이션 메뉴 상단 고정) ─────────────────────────
+st.logo('gucc_logo.png')
+
 # ── 사이드바 ───────────────────────────────────────────────────
-st.sidebar.image('gucc_logo.png', use_container_width=True)
 st.sidebar.divider()
 st.sidebar.info(
     '**사용 순서**\n\n'
