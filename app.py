@@ -1,7 +1,7 @@
 import streamlit as st
 
 st.set_page_config(
-    page_title='GUCC Grade Checker - 게임물 등급재분류 가능성 예측 서비스',
+    page_title='GUCC GRADE CHECKER - 게임물 등급재분류 가능성 예측 서비스',
     page_icon='🎮',
     layout='wide',
     initial_sidebar_state='expanded',
