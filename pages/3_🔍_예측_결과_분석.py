@@ -450,8 +450,10 @@ elif row_prob >= thr:
                     _text = _r.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
                     st.session_state[cache_key] = ('ok', _text)
                 except Exception as e:
-                    # API 키가 URL에 포함되므로 키 값을 마스킹해서 저장
-                    err_msg = str(e)
+                    try:
+                        err_msg = _r.text
+                    except Exception:
+                        err_msg = str(e)
                     if gemini_key and gemini_key in err_msg:
                         err_msg = err_msg.replace(gemini_key, '***')
                     st.session_state[cache_key] = ('err', err_msg)
