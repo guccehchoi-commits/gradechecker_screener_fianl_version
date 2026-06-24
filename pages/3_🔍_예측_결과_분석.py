@@ -429,7 +429,7 @@ elif row_prob >= thr:
                         f"게임:{sel_game} 등급:{grade_val} 확률:{row_prob:.0%}\n"
                         f"탐지주요인:{top2}"
                         + (f" 추가보정:{boost_str}" if boost_str else '')
-                        + "\n쉬운 한국어 2문장. 전문용어 금지."
+                        + "\n쉬운 한국어 4문장. 전문용어 금지. 탐지 이유, 주요 위험 요소, 재분류 가능성, 심사 시 주의사항 순서로 작성."
                     )
                     _r = _req.post(
                         "https://router.huggingface.co/v1/chat/completions",
@@ -437,7 +437,7 @@ elif row_prob >= thr:
                         json={
                             "model": "Qwen/Qwen2.5-7B-Instruct:cheapest",
                             "messages": [{"role": "user", "content": prompt}],
-                            "max_tokens": 100,
+                            "max_tokens": 250,
                             "temperature": 0.2,
                         },
                         timeout=30,
