@@ -11,9 +11,9 @@ def render_logo():
 }
 [data-testid="stHeaderLogo"],
 [data-testid="stSidebarLogo"] {
-    height: 110px !important;
+    height: 80px !important;
     width: auto !important;
-    max-width: 210px !important;
+    max-width: 180px !important;
     object-fit: contain !important;
 }
 span[label="app"] p { font-size: 0 !important; }
