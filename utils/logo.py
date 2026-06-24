@@ -8,6 +8,7 @@ def render_logo():
     overflow: visible !important;
     height: auto !important;
     padding: 0.6rem 0.4rem !important;
+    padding-left: 1.2rem !important;
 }
 [data-testid="stHeaderLogo"],
 [data-testid="stSidebarLogo"] {
