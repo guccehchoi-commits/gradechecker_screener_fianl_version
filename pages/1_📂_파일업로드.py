@@ -150,3 +150,6 @@ if st.button('🔍 분석 시작', type='primary', use_container_width=True):
             requests.post(url, json=payload, timeout=10)
     except Exception:
         pass
+
+from utils.footer import render_footer
+render_footer()

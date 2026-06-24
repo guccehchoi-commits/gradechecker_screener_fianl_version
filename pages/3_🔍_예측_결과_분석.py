@@ -314,9 +314,9 @@ neg_feats = [(loc_names[i], loc_vals[i]) for i in range(len(loc_vals)) if loc_va
 # 규칙 기반 보정 체크 (차트보다 먼저)
 boosts = []
 if GAMBLING_PATTERN.search(str(sel_game)) and grade_val != '청소년이용불가':
-    boosts.append(('도박 관련 키워드 감지', '게임명에 도박·사행 키워드가 포함되어 확률 +0.20 보정 적용'))
+    boosts.append(('유해 가능성 키워드 감지', '게임명에 사행성 관련 키워드가 포함되어 확률 +0.20 보정 적용'))
 if genre_val in BETTING_GENRES:
-    boosts.append(('베팅성 장르 감지', '장르가 보드게임(베팅성)으로 확률 +0.05 보정 적용'))
+    boosts.append(('우려 장르 감지', '결제 유도 요소가 포함된 장르로 확률 +0.05 보정 적용'))
 
 # ── 자동 분석 요약 (Layer 1, 항상 무료) ──────────────────────
 def _rule_insight(game, pos_f, neg_f, prob, thr_, boosts_):
@@ -337,7 +337,7 @@ def _rule_insight(game, pos_f, neg_f, prob, thr_, boosts_):
         if n1 != (pos_f[0][0] if pos_f else ''):
             lines.append(f"'{n1}' 항목도 위험도를 높이는 방향으로 추가 작용했습니다.")
     if boosts_:
-        lines.append("게임명에 도박·사행 관련 키워드가 감지되어 규칙 기반 보정이 추가 적용됐습니다.")
+        lines.append("게임명에 사행성 관련 키워드가 감지되어 규칙 기반 보정이 추가 적용됐습니다.")
     if neg_f and prob < 0.80:
         lines.append(f"다만 '{neg_f[0][0]}' 항목은 위험도를 낮추는 방향으로 작용했습니다.")
     if not lines:
@@ -415,7 +415,30 @@ elif row_prob >= thr:
 st.divider()
 
 # ── 차트 탭 ──────────────────────────────────────────────────
-tab_wf, tab_bar = st.tabs(['📈 단계별 누적 분석', '📊 항목별 영향도'])
+tab_bar, tab_wf = st.tabs(['📊 항목별 영향도', '📈 단계별 누적 분석'])
+
+with tab_bar:
+    st.caption(
+        '**빨간 막대**가 길수록 그 항목이 재분류 가능성을 크게 높인 것입니다. '
+        '**파란 막대**는 반대로 가능성을 낮추는 방향으로 작용한 것입니다.'
+    )
+    fig_bar = go.Figure(go.Bar(
+        x=loc_vals_r, y=loc_names_r, orientation='h',
+        marker=dict(color=[C_RISK if v > 0 else C_SAFE for v in loc_vals_r], line=dict(width=0)),
+        hovertemplate='<b>%{y}</b><br>영향도: %{x:+.4f}<br>%{customdata}<extra></extra>',
+        customdata=['위험도 ▲' if v > 0 else '위험도 ▼' for v in loc_vals_r],
+    ))
+    fig_bar.add_vline(x=0, line=dict(color='#555', width=1))
+    fig_bar.update_layout(
+        **_base_layout(height=max(320, top_n * 40 + 80)),
+        title=dict(text=f'<b>{sel_game}</b> — 항목별 영향도', font=dict(size=13)),
+        xaxis=dict(title='영향도', gridcolor='rgba(0,0,0,0.07)', zeroline=False, tickformat='+.3f'),
+        yaxis=dict(tickfont=dict(size=11)), bargap=0.3,
+    )
+    st.plotly_chart(fig_bar, use_container_width=True, config=_NO_TOOLBAR)
+    lc1, lc2 = st.columns(2)
+    lc1.markdown(f'<span style="color:{C_RISK}">■</span> **빨간색** — 재분류 가능성을 높이는 항목', unsafe_allow_html=True)
+    lc2.markdown(f'<span style="color:{C_SAFE}">■</span> **파란색** — 재분류 가능성을 낮추는 항목', unsafe_allow_html=True)
 
 with tab_wf:
     st.caption(
@@ -448,29 +471,6 @@ with tab_wf:
     st.plotly_chart(fig_wf, use_container_width=True, config=_NO_TOOLBAR)
     st.caption('※ 탐지 점수는 내부 계산값(로그 오즈)입니다. 최종 재분류 확률은 이를 0~1 사이로 변환한 값입니다.')
 
-with tab_bar:
-    st.caption(
-        '**빨간 막대**가 길수록 그 항목이 재분류 가능성을 크게 높인 것입니다. '
-        '**파란 막대**는 반대로 가능성을 낮추는 방향으로 작용한 것입니다.'
-    )
-    fig_bar = go.Figure(go.Bar(
-        x=loc_vals_r, y=loc_names_r, orientation='h',
-        marker=dict(color=[C_RISK if v > 0 else C_SAFE for v in loc_vals_r], line=dict(width=0)),
-        hovertemplate='<b>%{y}</b><br>영향도: %{x:+.4f}<br>%{customdata}<extra></extra>',
-        customdata=['위험도 ▲' if v > 0 else '위험도 ▼' for v in loc_vals_r],
-    ))
-    fig_bar.add_vline(x=0, line=dict(color='#555', width=1))
-    fig_bar.update_layout(
-        **_base_layout(height=max(320, top_n * 40 + 80)),
-        title=dict(text=f'<b>{sel_game}</b> — 항목별 영향도', font=dict(size=13)),
-        xaxis=dict(title='영향도', gridcolor='rgba(0,0,0,0.07)', zeroline=False, tickformat='+.3f'),
-        yaxis=dict(tickfont=dict(size=11)), bargap=0.3,
-    )
-    st.plotly_chart(fig_bar, use_container_width=True, config=_NO_TOOLBAR)
-    lc1, lc2 = st.columns(2)
-    lc1.markdown(f'<span style="color:{C_RISK}">■</span> **빨간색** — 재분류 가능성을 높이는 항목', unsafe_allow_html=True)
-    lc2.markdown(f'<span style="color:{C_SAFE}">■</span> **파란색** — 재분류 가능성을 낮추는 항목', unsafe_allow_html=True)
-
 st.divider()
 
 # ═══════════════════════════════════════════════════════════════
@@ -485,3 +485,6 @@ if boosts:
     st.caption('※ 위 보정은 차트에 직접 반영되지 않으며, 최종 확률에 더해진 별도 규칙입니다.')
 else:
     st.success('규칙 기반 보정 없음 — 위 확률은 모델 예측값 그대로입니다.')
+
+from utils.footer import render_footer
+render_footer()
