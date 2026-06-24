@@ -16,5 +16,7 @@ def render_logo():
     max-width: 210px !important;
     object-fit: contain !important;
 }
+span[label="app"] p { display: none !important; }
+span[label="app"]::after { content: "HOME"; font-size: 0.9rem; font-weight: 400; }
 </style>
 """, unsafe_allow_html=True)
