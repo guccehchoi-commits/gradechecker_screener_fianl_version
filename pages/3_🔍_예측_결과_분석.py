@@ -432,21 +432,25 @@ elif row_prob >= thr:
                         + "\n쉬운 한국어 2문장. 전문용어 금지."
                     )
                     _r = _req.post(
-                        'https://router.huggingface.co/hf-inference/models/mistralai/Mistral-7B-Instruct-v0.3/v1/chat/completions',
+                        'https://router.huggingface.co/hf-inference/models/Qwen/Qwen2.5-7B-Instruct/v1/chat/completions',
                         headers={'Authorization': f'Bearer {hf_key}'},
                         json={
-                            'model': 'mistralai/Mistral-7B-Instruct-v0.3',
+                            'model': 'Qwen/Qwen2.5-7B-Instruct',
                             'messages': [{'role': 'user', 'content': prompt}],
                             'max_tokens': 100,
                             'temperature': 0.2,
                         },
                         timeout=30,
                     )
+                    try:
+                        err_body = _r.text
+                    except Exception:
+                        err_body = ''
                     _r.raise_for_status()
                     _text = _r.json()['choices'][0]['message']['content'].strip()
                     st.session_state[cache_key] = ('ok', _text)
                 except Exception as e:
-                    err_msg = str(e)
+                    err_msg = err_body if err_body else str(e)
                     if hf_key and hf_key in err_msg:
                         err_msg = err_msg.replace(hf_key, '***')
                     st.session_state[cache_key] = ('err', err_msg)
