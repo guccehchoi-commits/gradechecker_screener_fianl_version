@@ -444,7 +444,7 @@ elif row_prob >= thr:
                     }
                     _r = _req.post(
                         _url, json=_body, timeout=15,
-                        headers={"Authorization": f"Bearer {gemini_key}"},
+                        headers={"x-goog-api-key": gemini_key},
                     )
                     _r.raise_for_status()
                     _text = _r.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
