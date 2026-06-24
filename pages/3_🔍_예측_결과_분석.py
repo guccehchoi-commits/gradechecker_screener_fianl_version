@@ -351,67 +351,6 @@ elif level == '검토 대상':
 else:
     st.info(auto_txt)
 
-st.divider()
-
-# ── 차트 탭 ──────────────────────────────────────────────────
-tab_wf, tab_bar = st.tabs(['📈 단계별 누적 분석', '📊 항목별 영향도'])
-
-with tab_wf:
-    st.caption(
-        '게임의 기본 점수(전체 평균)에서 시작해서 각 항목이 점수를 얼마씩 더하거나 뺐는지 순서대로 보여줍니다. '
-        '최종 탐지 점수가 높을수록 재분류 확률이 높습니다.'
-    )
-    wf_n   = 7
-    wf_idx = np.argsort(np.abs(row_sv))[::-1][:wf_n]
-    wf_names = [labels[i] for i in wf_idx]
-    wf_vals  = row_sv[wf_idx]
-    remainder = row_sv.sum() - wf_vals.sum()
-
-    fig_wf = go.Figure(go.Waterfall(
-        orientation='h',
-        measure=['absolute'] + ['relative'] * wf_n + ['relative', 'total'],
-        y=['기본값 (전체 평균)'] + wf_names + ['기타 요인 합산', '최종 탐지 점수'],
-        x=[base_val] + list(wf_vals) + [remainder, 0],
-        connector=dict(line=dict(color='rgba(120,120,120,0.25)', width=1)),
-        increasing=dict(marker=dict(color=C_RISK)),
-        decreasing=dict(marker=dict(color=C_SAFE)),
-        totals=dict(marker=dict(color='#444444', line=dict(color='#222', width=1))),
-        hovertemplate='<b>%{y}</b><br>영향도: %{x:+.4f}<extra></extra>',
-    ))
-    fig_wf.update_layout(
-        **_base_layout(height=max(320, (wf_n + 3) * 46 + 80)),
-        title=dict(text=f'<b>{sel_game}</b> — 단계별 탐지 점수 누적', font=dict(size=13)),
-        xaxis=dict(title='탐지 점수', gridcolor='rgba(0,0,0,0.07)', zeroline=False),
-        yaxis=dict(tickfont=dict(size=11), autorange='reversed'),
-    )
-    st.plotly_chart(fig_wf, use_container_width=True, config=_NO_TOOLBAR)
-    st.caption('※ 탐지 점수는 내부 계산값(로그 오즈)입니다. 최종 재분류 확률은 이를 0~1 사이로 변환한 값입니다.')
-
-with tab_bar:
-    st.caption(
-        '**빨간 막대**가 길수록 그 항목이 재분류 가능성을 크게 높인 것입니다. '
-        '**파란 막대**는 반대로 가능성을 낮추는 방향으로 작용한 것입니다.'
-    )
-    fig_bar = go.Figure(go.Bar(
-        x=loc_vals_r, y=loc_names_r, orientation='h',
-        marker=dict(color=[C_RISK if v > 0 else C_SAFE for v in loc_vals_r], line=dict(width=0)),
-        hovertemplate='<b>%{y}</b><br>영향도: %{x:+.4f}<br>%{customdata}<extra></extra>',
-        customdata=['위험도 ▲' if v > 0 else '위험도 ▼' for v in loc_vals_r],
-    ))
-    fig_bar.add_vline(x=0, line=dict(color='#555', width=1))
-    fig_bar.update_layout(
-        **_base_layout(height=max(320, top_n * 40 + 80)),
-        title=dict(text=f'<b>{sel_game}</b> — 항목별 영향도', font=dict(size=13)),
-        xaxis=dict(title='영향도', gridcolor='rgba(0,0,0,0.07)', zeroline=False, tickformat='+.3f'),
-        yaxis=dict(tickfont=dict(size=11)), bargap=0.3,
-    )
-    st.plotly_chart(fig_bar, use_container_width=True, config=_NO_TOOLBAR)
-    lc1, lc2 = st.columns(2)
-    lc1.markdown(f'<span style="color:{C_RISK}">■</span> **빨간색** — 재분류 가능성을 높이는 항목', unsafe_allow_html=True)
-    lc2.markdown(f'<span style="color:{C_SAFE}">■</span> **파란색** — 재분류 가능성을 낮추는 항목', unsafe_allow_html=True)
-
-st.divider()
-
 # ── AI 심층 분석 (Layer 2 — Hugging Face) ───────────────────
 hf_key = st.secrets.get('HF_API_KEY', '')
 
@@ -470,6 +409,65 @@ elif row_prob >= thr:
                 st.caption('⚠️ AI 분석 연결에 실패했습니다. 잠시 후 다시 시도해 주세요.')
             with st.expander('🔧 디버그'):
                 st.code(content)
+
+st.divider()
+
+# ── 차트 탭 ──────────────────────────────────────────────────
+tab_wf, tab_bar = st.tabs(['📈 단계별 누적 분석', '📊 항목별 영향도'])
+
+with tab_wf:
+    st.caption(
+        '게임의 기본 점수(전체 평균)에서 시작해서 각 항목이 점수를 얼마씩 더하거나 뺐는지 순서대로 보여줍니다. '
+        '최종 탐지 점수가 높을수록 재분류 확률이 높습니다.'
+    )
+    wf_n   = 7
+    wf_idx = np.argsort(np.abs(row_sv))[::-1][:wf_n]
+    wf_names = [labels[i] for i in wf_idx]
+    wf_vals  = row_sv[wf_idx]
+    remainder = row_sv.sum() - wf_vals.sum()
+
+    fig_wf = go.Figure(go.Waterfall(
+        orientation='h',
+        measure=['absolute'] + ['relative'] * wf_n + ['relative', 'total'],
+        y=['기본값 (전체 평균)'] + wf_names + ['기타 요인 합산', '최종 탐지 점수'],
+        x=[base_val] + list(wf_vals) + [remainder, 0],
+        connector=dict(line=dict(color='rgba(120,120,120,0.25)', width=1)),
+        increasing=dict(marker=dict(color=C_RISK)),
+        decreasing=dict(marker=dict(color=C_SAFE)),
+        totals=dict(marker=dict(color='#444444', line=dict(color='#222', width=1))),
+        hovertemplate='<b>%{y}</b><br>영향도: %{x:+.4f}<extra></extra>',
+    ))
+    fig_wf.update_layout(
+        **_base_layout(height=max(320, (wf_n + 3) * 46 + 80)),
+        title=dict(text=f'<b>{sel_game}</b> — 단계별 탐지 점수 누적', font=dict(size=13)),
+        xaxis=dict(title='탐지 점수', gridcolor='rgba(0,0,0,0.07)', zeroline=False),
+        yaxis=dict(tickfont=dict(size=11), autorange='reversed'),
+    )
+    st.plotly_chart(fig_wf, use_container_width=True, config=_NO_TOOLBAR)
+    st.caption('※ 탐지 점수는 내부 계산값(로그 오즈)입니다. 최종 재분류 확률은 이를 0~1 사이로 변환한 값입니다.')
+
+with tab_bar:
+    st.caption(
+        '**빨간 막대**가 길수록 그 항목이 재분류 가능성을 크게 높인 것입니다. '
+        '**파란 막대**는 반대로 가능성을 낮추는 방향으로 작용한 것입니다.'
+    )
+    fig_bar = go.Figure(go.Bar(
+        x=loc_vals_r, y=loc_names_r, orientation='h',
+        marker=dict(color=[C_RISK if v > 0 else C_SAFE for v in loc_vals_r], line=dict(width=0)),
+        hovertemplate='<b>%{y}</b><br>영향도: %{x:+.4f}<br>%{customdata}<extra></extra>',
+        customdata=['위험도 ▲' if v > 0 else '위험도 ▼' for v in loc_vals_r],
+    ))
+    fig_bar.add_vline(x=0, line=dict(color='#555', width=1))
+    fig_bar.update_layout(
+        **_base_layout(height=max(320, top_n * 40 + 80)),
+        title=dict(text=f'<b>{sel_game}</b> — 항목별 영향도', font=dict(size=13)),
+        xaxis=dict(title='영향도', gridcolor='rgba(0,0,0,0.07)', zeroline=False, tickformat='+.3f'),
+        yaxis=dict(tickfont=dict(size=11)), bargap=0.3,
+    )
+    st.plotly_chart(fig_bar, use_container_width=True, config=_NO_TOOLBAR)
+    lc1, lc2 = st.columns(2)
+    lc1.markdown(f'<span style="color:{C_RISK}">■</span> **빨간색** — 재분류 가능성을 높이는 항목', unsafe_allow_html=True)
+    lc2.markdown(f'<span style="color:{C_SAFE}">■</span> **파란색** — 재분류 가능성을 낮추는 항목', unsafe_allow_html=True)
 
 st.divider()
 
