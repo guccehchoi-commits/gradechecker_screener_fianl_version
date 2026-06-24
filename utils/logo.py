@@ -4,16 +4,17 @@ def render_logo():
     st.logo('gucc_logo.png', size='large', icon_image='gucc_logo.png')
     st.markdown("""
 <style>
-[data-testid="stSidebarHeader"] img,
-[data-testid="stSidebarHeader"] > div > img,
-[data-testid="stSidebarHeader"] > div > div > img {
-    height: 160px !important;
-    width: auto !important;
-    max-width: 100% !important;
-    object-fit: contain !important;
+[data-testid="stLogoLink"] {
+    height: auto !important;
+    overflow: visible !important;
+    padding: 0.8rem 0.5rem 0.5rem 0.5rem !important;
 }
-[data-testid="stSidebarHeader"] {
-    padding-bottom: 0.5rem;
+[data-testid="stHeaderLogo"] {
+    height: 110px !important;
+    width: auto !important;
+    max-width: 220px !important;
+    object-fit: contain !important;
+    display: block !important;
 }
 </style>
 """, unsafe_allow_html=True)
