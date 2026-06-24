@@ -431,10 +431,9 @@ elif row_prob >= thr:
                         + (f" 추가보정:{boost_str}" if boost_str else '')
                         + "\n쉬운 한국어 2문장. 전문용어 금지."
                     )
-                    # gemini-2.0-flash, v1beta (이 키로 실제 동작 확인된 모델)
                     _url = (
                         "https://generativelanguage.googleapis.com/v1beta"
-                        f"/models/gemini-2.0-flash:generateContent?key={gemini_key}"
+                        f"/models/gemini-1.5-flash:generateContent?key={gemini_key}"
                     )
                     _body = {
                         "contents": [{"parts": [{"text": prompt}]}],
