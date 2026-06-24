@@ -372,7 +372,7 @@ elif row_prob >= thr:
                         f"게임:{sel_game} 등급:{grade_val} 확률:{row_prob:.0%}\n"
                         f"탐지주요인:{top2}"
                         + (f" 추가보정:{boost_str}" if boost_str else '')
-                        + "\n쉬운 한국어 4문장. 전문용어 금지. 탐지 이유, 주요 위험 요소, 재분류 가능성, 심사 시 주의사항 순서로 작성."
+                        + "\n쉬운 한국어 4문장. 전문용어 금지. '도박', '베팅', '사행' 등 자극적 단어 사용 금지 — 대신 '유해 가능성', '결제 유도 요소', '주의 요소' 등으로 표현. 탐지 이유, 주요 우려 요소, 재분류 가능성, 심사 시 주의사항 순서로 작성."
                     )
                     _r = _req.post(
                         "https://router.huggingface.co/v1/chat/completions",
@@ -387,6 +387,12 @@ elif row_prob >= thr:
                     )
                     _r.raise_for_status()
                     _text = _r.json()["choices"][0]["message"]["content"].strip()
+                    _replacements = {
+                        '도박': '사행성', '베팅': '결제 유도', '사행': '유해 가능성',
+                        '갬블': '사행성', 'gambling': '유해 가능성', 'betting': '결제 유도',
+                    }
+                    for _bad, _good in _replacements.items():
+                        _text = _text.replace(_bad, _good)
                     st.session_state[cache_key] = ('ok', _text)
                 except Exception as e:
                     err_msg = str(e)
