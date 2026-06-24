@@ -9,7 +9,8 @@ def render_logo():
     height: auto !important;
     padding: 0.6rem 0.4rem !important;
 }
-[data-testid="stHeaderLogo"] {
+[data-testid="stHeaderLogo"],
+[data-testid="stSidebarLogo"] {
     height: 110px !important;
     width: auto !important;
     max-width: 210px !important;
