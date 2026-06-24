@@ -448,7 +448,11 @@ elif row_prob >= thr:
                     _text = _r.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
                     st.session_state[cache_key] = ('ok', _text)
                 except Exception as e:
-                    st.session_state[cache_key] = ('err', str(e))
+                    # API 키가 URL에 포함되므로 키 값을 마스킹해서 저장
+                    err_msg = str(e)
+                    if gemini_key and gemini_key in err_msg:
+                        err_msg = err_msg.replace(gemini_key, '***')
+                    st.session_state[cache_key] = ('err', err_msg)
 
     cached = st.session_state.get(cache_key)
     if cached:
@@ -458,13 +462,11 @@ elif row_prob >= thr:
             st.success(content)
         elif status == 'err':
             if '429' in content or 'quota' in content.lower() or 'exhausted' in content.lower():
-                st.caption('📊 오늘 AI 분석 횟수를 모두 사용했습니다. 내일 다시 이용하거나 위 자동 요약을 참고해 주세요.')
+                st.caption('📊 AI 분석 일일 한도를 초과했습니다. 내일 다시 이용하거나 위 자동 요약을 참고해 주세요.')
             elif 'api_key' in content.lower() or 'invalid' in content.lower() or '401' in content or '403' in content:
                 st.caption('🔑 API 키가 올바르지 않습니다. Streamlit Secrets의 GEMINI_API_KEY를 확인해 주세요.')
             else:
                 st.caption('⚠️ AI 분석 연결에 실패했습니다. 잠시 후 다시 시도해 주세요.')
-            with st.expander('🔧 디버그 (원인 확인용)'):
-                st.code(content)
 
 st.divider()
 
