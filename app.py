@@ -78,7 +78,7 @@ st.sidebar.divider()
 st.sidebar.caption('※ 예측 결과는 우선 재검토 순위 제공 목적\n최종 판정은 전문가 검토 필수')
 
 # ── 홈 화면 ───────────────────────────────────────────────────
-st.title('🎮 GUCC Grade Checker')
+st.title('🎮 GUCC GRADE CHECKER')
 st.markdown('게임물 데이터를 업로드하면 **재분류 가능성이 높은 게임을 자동으로 순위화**하는 게임물 등급재분류 가능성 예측 서비스입니다.')
 st.divider()
 
