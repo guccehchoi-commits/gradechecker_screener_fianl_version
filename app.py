@@ -75,7 +75,7 @@ _rec, _pre = _perf.get(round(thr, 2), ('—', '—'))
 st.sidebar.caption(f'예상 재현율 {_rec}  /  정밀도 {_pre}')
 
 st.sidebar.divider()
-st.sidebar.caption('※ 예측 결과는 우선 재검토 순위 제공 목적\n최종 판정은 전문가 검토 필수')
+st.sidebar.caption('※ 예측 결과는 우선 재검토 순위 제공 목적 \n※ 최종 판정은 전문가 검토 필수')
 
 # ── 홈 화면 ───────────────────────────────────────────────────
 st.title('🎯 GRADE CHECKER')
