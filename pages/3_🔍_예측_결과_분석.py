@@ -410,11 +410,11 @@ elif level == '검토 대상':
 else:
     st.info(auto_txt)
 
-# ── AI 심층 분석 (Layer 2 — Groq) ────────────────────────────
-groq_key = st.secrets.get('GROQ_API_KEY', '')
+# ── AI 심층 분석 (Layer 2 — HuggingFace) ─────────────────────
+hf_key = st.secrets.get('HF_API_KEY', '')
 
-if not groq_key:
-    st.caption('🔑 AI 심층 분석 기능을 사용하려면 Streamlit Secrets에 GROQ_API_KEY를 등록해 주세요.')
+if not hf_key:
+    st.caption('🔑 AI 심층 분석 기능을 사용하려면 Streamlit Secrets에 HF_API_KEY를 등록해 주세요.')
 elif row_prob >= thr:
     cache_key = f'gem_{sel_game}'
 
@@ -432,23 +432,22 @@ elif row_prob >= thr:
                         + "\n쉬운 한국어 2문장. 전문용어 금지."
                     )
                     _r = _req.post(
-                        'https://api.groq.com/openai/v1/chat/completions',
-                        headers={'Authorization': f'Bearer {groq_key}'},
-                        json={
-                            'model': 'llama-3.1-8b-instant',
-                            'messages': [{'role': 'user', 'content': prompt}],
-                            'max_tokens': 100,
-                            'temperature': 0.2,
-                        },
-                        timeout=15,
+                        'https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.3',
+                        headers={'Authorization': f'Bearer {hf_key}'},
+                        json={'inputs': prompt, 'parameters': {'max_new_tokens': 100, 'temperature': 0.2}},
+                        timeout=30,
                     )
                     _r.raise_for_status()
-                    _text = _r.json()['choices'][0]['message']['content'].strip()
+                    result = _r.json()
+                    if isinstance(result, list):
+                        _text = result[0].get('generated_text', '').replace(prompt, '').strip()
+                    else:
+                        _text = str(result)
                     st.session_state[cache_key] = ('ok', _text)
                 except Exception as e:
                     err_msg = str(e)
-                    if groq_key and groq_key in err_msg:
-                        err_msg = err_msg.replace(groq_key, '***')
+                    if hf_key and hf_key in err_msg:
+                        err_msg = err_msg.replace(hf_key, '***')
                     st.session_state[cache_key] = ('err', err_msg)
 
     cached = st.session_state.get(cache_key)
@@ -461,7 +460,7 @@ elif row_prob >= thr:
             if '429' in content or 'quota' in content.lower() or 'rate' in content.lower():
                 st.caption('📊 AI 분석 일일 한도를 초과했습니다. 내일 다시 이용하거나 위 자동 요약을 참고해 주세요.')
             elif '401' in content or '403' in content or 'invalid' in content.lower():
-                st.caption('🔑 API 키가 올바르지 않습니다. Streamlit Secrets의 GROQ_API_KEY를 확인해 주세요.')
+                st.caption('🔑 API 키가 올바르지 않습니다. Streamlit Secrets의 HF_API_KEY를 확인해 주세요.')
             else:
                 st.caption('⚠️ AI 분석 연결에 실패했습니다. 잠시 후 다시 시도해 주세요.')
             with st.expander('🔧 디버그'):
