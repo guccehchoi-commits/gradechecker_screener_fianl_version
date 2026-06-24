@@ -433,7 +433,7 @@ elif row_prob >= thr:
                     )
                     _url = (
                         "https://generativelanguage.googleapis.com/v1beta"
-                        f"/models/gemini-1.5-flash:generateContent?key={gemini_key}"
+                        "/models/gemini-1.5-flash:generateContent"
                     )
                     _body = {
                         "contents": [{"parts": [{"text": prompt}]}],
@@ -442,7 +442,10 @@ elif row_prob >= thr:
                             "temperature": 0.2,
                         },
                     }
-                    _r = _req.post(_url, json=_body, timeout=15)
+                    _r = _req.post(
+                        _url, json=_body, timeout=15,
+                        headers={"Authorization": f"Bearer {gemini_key}"},
+                    )
                     _r.raise_for_status()
                     _text = _r.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
                     st.session_state[cache_key] = ('ok', _text)
