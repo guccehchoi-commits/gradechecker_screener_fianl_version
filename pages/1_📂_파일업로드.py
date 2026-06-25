@@ -9,19 +9,6 @@ st.title('📂 파일 업로드')
 st.caption('분석할 게임물 파일을 업로드하세요. Excel·CSV 모두 지원하며 컬럼명을 자동으로 감지합니다.')
 st.divider()
 
-# ── [임시 차단 제어] ────────────────────────────────────────────
-# 아래 함수를 활성화(주석 해제)하면 파일 업로드가 차단됩니다.
-# 정상 운영 복귀 시: _block_file_upload() 호출 줄만 주석 처리하세요.
-def _block_file_upload():
-    st.warning('🔒 파일 업로드 기능이 일시적으로 비활성화되어 있습니다.')
-    st.info(
-        '현재 **2차 심사 시연**을 위한 준비 중으로, 파일 업로드를 통한 분석 기능이 일시적으로 제한됩니다.\n\n'
-        '서비스 정식 운영 시 해당 기능이 복구될 예정입니다.'
-    )
-    st.stop()
-_block_file_upload()  # ← 정상 운영 시 이 줄을 주석 처리하세요 (# 을 앞에 붙이면 기능 복귀)
-# ───────────────────────────────────────────────────────────────
-
 # ── 컬럼 별칭 (자동 탐지용) ────────────────────────────────────
 COLUMN_ALIASES = {
     'game_name': ['game_name', 'gamename', 'game_title', '게임명', '게임이름', '타이틀', 'title', 'name'],
@@ -85,8 +72,21 @@ for i, (key, label) in enumerate(LABELS.items()):
 auto_found = sum(1 for v in col_mapping.values() if v is not None)
 st.caption(f'감지된 컬럼: {auto_found} / 4개')
 st.divider()
+# ── [임시 차단 제어] ────────────────────────────────────────────
+# 분석 시작 버튼 클릭 시 얼럿을 표시합니다.
+# 정상 운영 복귀 시: _block_analysis() 호출 줄만 주석 처리하세요.
+def _block_analysis():
+    st.warning(
+        '🔒 현재 분석 기능이 일시적으로 비활성화되어 있습니다.\n\n'
+        '**2차 심사 시연** 준비 중으로, 분석 결과 내 민감 정보 보호를 위해 해당 기능이 제한됩니다. '
+        '서비스 정식 운영 시 복구될 예정입니다.'
+    )
+    st.stop()
+# ───────────────────────────────────────────────────────────────
+
 # ── 분석 시작 ──────────────────────────────────────────────────
 if st.button('🔍 분석 시작', type='primary', use_container_width=True):
+    _block_analysis()  # ← 정상 운영 시 이 줄을 주석 처리하세요
     df_work = pd.DataFrame(index=df_raw.index)
     # game_name — 없으면 행 번호로 대체
     gn = col_mapping['game_name']
