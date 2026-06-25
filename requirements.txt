@@ -6,3 +6,4 @@ xgboost
 shap
 openpyxl
 plotly
+requests
