@@ -359,20 +359,38 @@ hf_key = st.secrets.get('HF_API_KEY', '')
 if not hf_key:
     st.caption('🔑 AI 심층 분석 기능을 사용하려면 Streamlit Secrets에 HF_API_KEY를 등록해 주세요.')
 elif row_prob >= thr:
-    cache_key = f'hf_{sel_game}'
+    cache_key = f'hf_{sel_game}_{thr}'  # ★ 수정: 기준값이 바뀌면 캐시도 새로 생성되도록 key에 thr 포함
 
     if cache_key not in st.session_state:
         if st.button('✨ AI 심층 분석', type='secondary'):
             with st.spinner('분석 중...'):
                 try:
                     import requests as _req
-                    top2 = ','.join(f'{n}({v:+.2f})' for n, v in pos_feats[:2])
-                    boost_str = boosts[0][0] if boosts else ''
+
+                    # ★ 수정: 위험 증가 요인(top3) + 완화 요인(top2)을 함께 전달 — 한쪽으로 치우친 근거 방지
+                    top_pos = ', '.join(f'{n}(+{v:.2f})' for n, v in pos_feats[:3]) or '없음'
+                    top_neg = ', '.join(f'{n}({v:.2f})' for n, v in neg_feats[:2]) or '없음'
+                    boost_str = '; '.join(f'{label}({desc})' for label, desc in boosts) if boosts else '없음'
+                    margin = row_prob - thr  # ★ 수정: 현재 기준값 대비 여유폭 — 경계선 사례 여부 판단용
+
                     prompt = (
-                        f"게임:{sel_game} 등급:{grade_val} 확률:{row_prob:.0%}\n"
-                        f"탐지주요인:{top2}"
-                        + (f" 추가보정:{boost_str}" if boost_str else '')
-                        + "\n쉬운 한국어 3문장으로 완성된 문장으로 작성. 절대 문장 중간에 끊지 말 것. 전문용어 금지. '도박', '베팅', '사행' 등 자극적 단어 사용 금지 — 대신 '유해 가능성', '결제 유도 요소', '주의 요소' 등으로 표현. 탐지 이유, 주요 우려 요소, 심사 시 주의사항 순서로 작성."
+                        f"[게임 정보]\n"
+                        f"게임명: {sel_game}\n"
+                        f"등급: {grade_val} / 장르: {genre_val or '미상'}\n"
+                        f"재분류 확률: {row_prob:.0%} (현재 기준값 {thr:.0%} 대비 {margin:+.0%}p)\n"
+                        f"위험도 판정: {level}\n"
+                        f"[모델 탐지 근거]\n"
+                        f"위험을 높인 요인(영향력 순): {top_pos}\n"
+                        f"위험을 낮춘(완화) 요인: {top_neg}\n"
+                        f"규칙 기반 추가 보정: {boost_str}\n"
+                        f"[작성 지침]\n"
+                        "위 데이터에 근거해서만 작성하고, 제공되지 않은 사실은 추측하거나 지어내지 말 것. "
+                        "쉬운 한국어 3문장으로, 각 문장을 끊지 말고 끝까지 완성할 것. 전문용어 금지. "
+                        "'도박', '베팅', '사행' 등 자극적 단어 대신 '유해 가능성', '결제 유도 요소', '주의 요소' 등으로 표현. "
+                        "다음 순서로 각각 한 문장씩 작성: "
+                        "① 핵심 탐지 근거(가장 큰 영향 요인 중심), "
+                        "② 주요 우려 요소와 완화 요인(있다면 함께 언급), "
+                        "③ 심사자를 위한 구체적 권고사항(기준값과의 여유폭을 참고한 우선순위 포함)."
                     )
                     _r = _req.post(
                         "https://router.huggingface.co/v1/chat/completions",
@@ -380,7 +398,7 @@ elif row_prob >= thr:
                         json={
                             "model": "Qwen/Qwen2.5-7B-Instruct:cheapest",
                             "messages": [{"role": "user", "content": prompt}],
-                            "max_tokens": 350,
+                            "max_tokens": 420,  # ★ 수정: 350 → 420 (구조가 길어져 잘림 방지)
                             "temperature": 0.2,
                         },
                         timeout=30,
