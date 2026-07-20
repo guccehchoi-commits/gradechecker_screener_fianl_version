@@ -143,20 +143,21 @@ if st.button('🔍 분석 시작', type='primary', use_container_width=True):
     st.success('✅ 분석 완료! 왼쪽 메뉴에서 **② 예측 결과**를 확인하세요.')
     st.balloons()
 
-    # ── Google Sheets 저장 ─────────────────────────────────────
+   # ── Google Sheets 저장 ─────────────────────────────────────
     try:
         import requests, datetime
         url = st.secrets.get('SHEETS_URL', '')
         if url:
             from utils.model import risk_label
+            thr = st.session_state.get('global_thr', 0.40)  # ★ 수정: 사이드바에서 설정한 현재 민감도 기준값 사용
             now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             payload = [
                 {
                     'game_name': str(row['game_name']),
-                    'grade':     str(row.get('grade', '')),
-                    'company':   str(row.get('company', '')),
-                    'prob':      float(row['재분류_확률']),
-                    'risk':      risk_label(float(row['재분류_확률'])),
+                    'grade': str(row.get('grade', '')),
+                    'company': str(row.get('company', '')),
+                    'prob': float(row['재분류_확률']),
+                    'risk': risk_label(float(row['재분류_확률']), thr),  # ★ 수정: thr 인자 전달 (기존엔 기본값 0.40 고정)
                     'uploaded_at': now,
                 }
                 for _, row in result.iterrows()
