@@ -143,7 +143,7 @@ if st.button('🔍 분석 시작', type='primary', use_container_width=True):
     st.success('✅ 분석 완료! 왼쪽 메뉴에서 **② 예측 결과**를 확인하세요.')
     st.balloons()
 
-   # ── Google Sheets 저장 ─────────────────────────────────────
+# ── Google Sheets 저장 ─────────────────────────────────────
     try:
         import requests, datetime
         url = st.secrets.get('SHEETS_URL', '')
@@ -165,6 +165,6 @@ if st.button('🔍 분석 시작', type='primary', use_container_width=True):
             requests.post(url, json=payload, timeout=10)
     except Exception:
         pass
-
+            
 from utils.footer import render_footer
 render_footer()
