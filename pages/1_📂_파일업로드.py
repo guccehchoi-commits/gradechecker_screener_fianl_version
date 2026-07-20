@@ -5,6 +5,11 @@ from utils.model import load_model, predict
 st.set_page_config(page_title='파일 업로드', page_icon='📂', layout='wide')
 from utils.logo import render_logo
 render_logo()
+
+# ── 탐지 민감도 설정 (전 페이지 공통, 사이드바 계속 표시) ──  ★ 추가
+from utils.threshold import render_threshold_sidebar
+render_threshold_sidebar()
+
 st.title('📂 파일 업로드')
 st.caption('분석할 게임물 파일을 업로드하세요. Excel·CSV 모두 지원하며 컬럼명을 자동으로 감지합니다.')
 st.divider()
