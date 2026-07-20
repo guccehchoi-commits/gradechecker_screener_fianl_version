@@ -52,9 +52,9 @@ def render_threshold_sidebar() -> float:
     thr = confirmed_thr  # 확인 전까지는 기존에 반영된 값을 그대로 사용
 
     if thr <= 0.30:
-        st.sidebar.info('**폭넓게 탐지**\n\n의심스러운 게임을 최대한 잡아냅니다. 검토할 게임 수가 많아집니다.')
+        st.sidebar.info('**폭넓게 탐지**\n\n의심스러운 게임을 최대한 잡아냅니다. 검토할 게임 수가 다소 많아질 수 있습니다.')
     elif thr <= 0.45:
-        st.sidebar.success('**권장 설정 ★**\n\n탐지 범위와 정확도의 균형입니다.\n실제 재분류 게임의 약 **73%** 를 잡아냅니다.')
+        st.sidebar.success('**권장 설정 ★**\n\n탐지 범위와 정확도의 균형입니다.\n실제 재분류 게임의 약 **70%** 를 잡아냅니다.')
     elif thr <= 0.65:
         st.sidebar.warning('**정밀 탐지**\n\n확실한 게임만 포함합니다. 경계선 게임을 놓칠 수 있습니다.')
     else:
