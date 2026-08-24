@@ -60,9 +60,13 @@ X_trans = prep.transform(X_raw)
 def _get_explainer(_clf):
     return shap.TreeExplainer(_clf)
 
+@st.cache_data
+def _get_shap_values(_explainer, X):
+    return _explainer.shap_values(X)
+
 with st.spinner('분석 데이터 준비 중... (처음 한 번만 시간이 걸립니다)'):
     explainer   = _get_explainer(clf)
-    shap_values = explainer.shap_values(X_trans)
+    shap_values = _get_shap_values(explainer, X_trans)
 
 sv = shap_values[1] if isinstance(shap_values, list) else shap_values
 raw_names = list(prep.get_feature_names_out())
