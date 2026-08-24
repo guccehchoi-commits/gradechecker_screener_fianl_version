@@ -40,8 +40,9 @@ if 'result' not in st.session_state:
 clf     = st.session_state['clf']
 prep    = st.session_state['prep']
 df_feat = st.session_state['df_feat']
-result  = st.session_state['result']
-thr     = st.session_state.get('global_thr', 0.40)
+result   = st.session_state['result'].copy()
+if 'game_title' in result.columns and 'game_name' not in result.columns:
+    result = result.rename(columns={'game_title': 'game_name'})
 
 from utils.preprocess import CAT_COLS, FEAT_COLS, GAMBLING_PATTERN, BETTING_GENRES
 from utils.model import risk_label, risk_color
