@@ -275,7 +275,7 @@ st.caption('게임을 선택하면, 모델이 왜 이 확률을 줬는지 항목
 sel_game = st.selectbox(
     '게임 선택',
     result['game_name'].tolist(),
-    format_func=lambda n: f'{n}  ·  확률 {result.loc[result["game_name"]==n,"재분류_확률"].values[0]:.4f}',
+    format_func=lambda n: f'{n}  ·  확률 {float(result.loc[result["game_name"]==n,"재분류_확률"].values[0]):.4f}',
 )
 
 game_row = result[result['game_name'] == sel_game]
@@ -361,13 +361,13 @@ elif level == '검토 대상':
 else:
     st.info(auto_txt)
 
-# ── AI 심층 분석 (Layer 2 — Hugging Face) ───────────────────
-hf_key = st.secrets.get('HF_API_KEY', '')
+# ── AI 심층 분석 (Layer 2 — OpenAI) ───────────────────
+openai_key = st.secrets.get('OPENAI_API_KEY', '')
 
-if not hf_key:
-    st.caption('🔑 AI 심층 분석 기능을 사용하려면 Streamlit Secrets에 HF_API_KEY를 등록해 주세요.')
+if not openai_key:
+    st.caption('🔑 AI 심층 분석 기능을 사용하려면 Streamlit Secrets에 OPENAI_API_KEY를 등록해 주세요.')
 elif row_prob >= thr:
-    cache_key = f'hf_{sel_game}_{thr}'  # ★ 수정: 기준값이 바뀌면 캐시도 새로 생성되도록 key에 thr 포함
+    cache_key = f'ai_{sel_game}_{thr}'
 
     if cache_key not in st.session_state:
         if st.button('✨ AI 심층 분석', type='secondary'):
@@ -375,11 +375,10 @@ elif row_prob >= thr:
                 try:
                     import requests as _req
 
-                    # ★ 수정: 위험 증가 요인(top3) + 완화 요인(top2)을 함께 전달 — 한쪽으로 치우친 근거 방지
                     top_pos = ', '.join(f'{n}(+{v:.2f})' for n, v in pos_feats[:3]) or '없음'
                     top_neg = ', '.join(f'{n}({v:.2f})' for n, v in neg_feats[:2]) or '없음'
                     boost_str = '; '.join(f'{label}({desc})' for label, desc in boosts) if boosts else '없음'
-                    margin = row_prob - thr  # ★ 수정: 현재 기준값 대비 여유폭 — 경계선 사례 여부 판단용
+                    margin = row_prob - thr
 
                     prompt = (
                         f"[게임 정보]\n"
@@ -402,7 +401,7 @@ elif row_prob >= thr:
                     )
                     _r = _req.post(
                         "https://api.openai.com/v1/chat/completions",
-                        headers={"Authorization": f"Bearer {st.secrets['OPENAI_API_KEY']}"},
+                        headers={"Authorization": f"Bearer {openai_key}"},
                         json={
                             "model": "gpt-4o-mini",
                             "messages": [{"role": "user", "content": prompt}],
@@ -410,8 +409,9 @@ elif row_prob >= thr:
                             "temperature": 0.2,
                         },
                         timeout=30,
-                    )or_status()
-                                        _text = _r.json()["choices"][0]["message"]["content"].strip()
+                    )
+                    _r.raise_for_status()
+                    _text = _r.json()["choices"][0]["message"]["content"].strip()
                     _replacements = {
                         '도박': '사행성', '베팅': '결제 유도', '사행': '유해 가능성',
                         '갬블': '사행성', 'gambling': '유해 가능성', 'betting': '결제 유도',
@@ -421,8 +421,6 @@ elif row_prob >= thr:
                     st.session_state[cache_key] = ('ok', _text)
                 except Exception as e:
                     err_msg = str(e)
-                    if hf_key and hf_key in err_msg:
-                        err_msg = err_msg.replace(hf_key, '***')
                     st.session_state[cache_key] = ('err', err_msg)
 
     cached = st.session_state.get(cache_key)
@@ -435,7 +433,7 @@ elif row_prob >= thr:
             if '429' in content or 'quota' in content.lower() or 'rate limit' in content.lower():
                 st.caption('📊 AI 분석 한도를 초과했습니다. 잠시 후 다시 이용하거나 위 자동 요약을 참고해 주세요.')
             elif 'unauthorized' in content.lower() or '401' in content or '403' in content:
-                st.caption('🔑 API 키가 올바르지 않습니다. Streamlit Secrets의 HF_API_KEY를 확인해 주세요.')
+                st.caption('🔑 API 키가 올바르지 않습니다. Streamlit Secrets의 OPENAI_API_KEY를 확인해 주세요.')
             elif '404' in content:
                 st.caption('⚠️ 모델을 찾을 수 없습니다. 모델명을 확인해 주세요.')
             else:
