@@ -404,7 +404,7 @@ elif row_prob >= thr:
                         "https://router.huggingface.co/v1/chat/completions",
                         headers={"Authorization": f"Bearer {hf_key}"},
                         json={
-                            "model": "Qwen/Qwen2.5-7B-Instruct",
+                            "model": "Qwen/Qwen2.5-7B-Instruct:cheapest",
                             "messages": [{"role": "user", "content": prompt}],
                             "max_tokens": 420,  # ★ 수정: 350 → 420 (구조가 길어져 잘림 방지)
                             "temperature": 0.2,
