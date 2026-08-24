@@ -86,13 +86,11 @@ col_rename = {
     'game_name': '게임명', 'grade': '등급',
     'company': '플랫폼', 'genre': '장르',
 }
-df_display = df_view[display_cols].rename(columns=col_rename)
-styled = (
-    df_display.style
-    .apply(highlight_risk, axis=1)
-    .format({'재분류_확률': fmt_prob})
-)
-st.dataframe(styled, use_container_width=True, height=420)
+df_display = df_view[display_cols].rename(columns=col_rename).reset_index(drop=True)
+df_display['재분류_확률'] = pd.to_numeric(df_display['재분류_확률'], errors='coerce').fillna(0)
+df_display['재분류_확률'] = df_display['재분류_확률'].apply(fmt_prob)
+
+st.dataframe(df_display, use_container_width=True, height=420)
 
 # ── 포트나이트 주의 문구 ───────────────────────────────────────
 if 'game_name' in df_view.columns:
