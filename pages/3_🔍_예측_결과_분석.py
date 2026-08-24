@@ -45,6 +45,7 @@ if 'game_title' in result.columns and 'game_name' not in result.columns:
     result = result.rename(columns={'game_title': 'game_name'})
 if 'game_title' in df_feat.columns and 'game_name' not in df_feat.columns:
     df_feat = df_feat.rename(columns={'game_title': 'game_name'})
+thr      = st.session_state.get('global_thr', 0.40)
 
 from utils.preprocess import CAT_COLS, FEAT_COLS, GAMBLING_PATTERN, BETTING_GENRES
 from utils.model import risk_label, risk_color
