@@ -11,6 +11,8 @@ if 'result' not in st.session_state:
     st.warning('먼저 **① 파일 업로드** 페이지에서 파일을 업로드하고 분석을 실행해 주세요.')
     st.stop()
 result   = st.session_state['result'].copy()
+if 'game_title' in result.columns and 'game_name' not in result.columns:
+    result = result.rename(columns={'game_title': 'game_name'})
 filename = st.session_state.get('filename', '')
 thr      = st.session_state.get('global_thr', 0.40)
 st.caption(f'파일: {filename}  |  전체 {len(result):,}건  |  현재 기준값: {thr}')
