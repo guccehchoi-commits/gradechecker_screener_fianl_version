@@ -401,18 +401,17 @@ elif row_prob >= thr:
                         "③ 심사자를 위한 구체적 권고사항(기준값과의 여유폭을 참고한 우선순위 포함)."
                     )
                     _r = _req.post(
-                        "https://router.huggingface.co/v1/chat/completions",
-                        headers={"Authorization": f"Bearer {hf_key}"},
+                        "https://api.openai.com/v1/chat/completions",
+                        headers={"Authorization": f"Bearer {st.secrets['OPENAI_API_KEY']}"},
                         json={
-                            "model": "Qwen/Qwen2.5-72B-Instruct:cheapest",
+                            "model": "gpt-4o-mini",
                             "messages": [{"role": "user", "content": prompt}],
-                            "max_tokens": 420,  # ★ 수정: 350 → 420 (구조가 길어져 잘림 방지)
+                            "max_tokens": 420,
                             "temperature": 0.2,
                         },
                         timeout=30,
-                    )
-                    _r.raise_for_status()
-                    _text = _r.json()["choices"][0]["message"]["content"].strip()
+                    )or_status()
+                                        _text = _r.json()["choices"][0]["message"]["content"].strip()
                     _replacements = {
                         '도박': '사행성', '베팅': '결제 유도', '사행': '유해 가능성',
                         '갬블': '사행성', 'gambling': '유해 가능성', 'betting': '결제 유도',
