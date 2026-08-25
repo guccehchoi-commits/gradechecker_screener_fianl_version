@@ -53,7 +53,8 @@ df_feat_src = st.session_state['df_feat']
 result_src  = st.session_state['result']
 thr         = st.session_state.get('global_thr', 0.40)
 
-from utils.preprocess import CAT_COLS, FEAT_COLS, GAMBLING_PATTERN, BETTING_GENRES
+from utils.preprocess import (CAT_COLS, FEAT_COLS, GAMBLING_PATTERN,
+                              BETTING_GENRES, BETTING_BOARD_PATTERN as _BOARD_RE)
 from utils.model import risk_label, risk_color
 
 # ── 피처 이름 변환 ───────────────────────────────────────────
@@ -461,8 +462,11 @@ def section_single_game():
     boosts = []
     if GAMBLING_PATTERN.search(str(sel_game)) and grade_val != '청소년이용불가':
         boosts.append(('유해 가능성 키워드 감지', '게임명에 사행성 관련 키워드가 포함되어 확률 +0.20 보정 적용'))
-    if genre_val in BETTING_GENRES:
-        boosts.append(('우려 장르 감지', '결제 유도 요소가 포함된 장르로 확률 +0.05 보정 적용'))
+    if '카지노' in str(genre_val) and grade_val != '청소년이용불가':
+        boosts.append(('카지노 장르 + 청소년이용불가 아님',
+                       '사업자가 신고한 장르가 카지노인데 청소년이용불가가 아니어서 위험도를 0.85 이상으로 상향'))
+    elif _BOARD_RE.search(str(genre_val)) and grade_val != '청소년이용불가':
+        boosts.append(('베팅성 보드 장르 + 청소년이용불가 아님', '확률 +0.10 보정 적용'))
 
     # ── 자동 분석 요약 (Layer 1) ──────────────────────────────
     st.markdown('**💡 자동 분석 요약**')

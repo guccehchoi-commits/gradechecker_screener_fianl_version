@@ -26,7 +26,11 @@ FORTNITE_KEYWORDS = ['fortnite', '포트나이트']
 CAT_COLS  = ['grade', 'company', 'language_type', 'grade_company']
 FT_COLS   = [f'ft_{i}' for i in range(FT_DIM)]
 FEAT_COLS = CAT_COLS + FT_COLS
-BETTING_GENRES = ['보드게임(베팅성)']
+# 사업자가 스스로 신고한 장르. GRAC 자체등급분류 표기는 '보드(베팅성)'·'카지노'이며
+# '카지노,기타'처럼 복합 표기가 흔해 정확일치가 아닌 부분일치로 판정한다.
+CASINO_GENRE_PATTERN = re.compile(r'카지노', re.IGNORECASE)
+BETTING_BOARD_PATTERN = re.compile(r'보드\s*(?:게임)?\s*\(\s*베팅성\s*\)')
+BETTING_GENRES = ['보드(베팅성)', '보드게임(베팅성)', '카지노']
 
 GAMBLING_KEYWORDS = [
     'slot', 'slots', '슬롯', 'poker', '포커',
@@ -92,12 +96,30 @@ def is_fortnite(game_name: str) -> bool:
 
 
 def apply_genre_boost(prob: np.ndarray, df: pd.DataFrame) -> np.ndarray:
+    """장르가 카지노·베팅성 보드인데 청소년이용불가가 아니면 위험도를 올린다.
+
+    사업자가 스스로 '카지노'라고 신고해 놓고 청불을 매기지 않은 건은 그 자체가
+    등급 부적정 의심 근거이므로 강하게 보정한다.
+    '보드(베팅성)'은 실측 결과 97%가 레이싱 게임 등 장르 오신고라, 최소값 없이
+    소폭만 가산해 경계선에 있는 건만 밀어올린다.
+    """
     if 'genre' not in df.columns:
         return prob
     boosted = prob.copy()
-    mask = df['genre'].isin(BETTING_GENRES)
-    boosted[mask] = np.clip(prob[mask] + 0.05, 0, 1.0)
-    return boosted
+    genre = df['genre'].fillna('').astype(str)
+    if 'grade' in df.columns:
+        grade = df['grade'].map(normalize_grade)
+    else:
+        grade = pd.Series(['미상'] * len(df), index=df.index)
+    not_adult = (grade != '청소년이용불가').to_numpy()
+
+    casino = genre.str.contains(CASINO_GENRE_PATTERN, na=False).to_numpy() & not_adult
+    board = (genre.str.contains(BETTING_BOARD_PATTERN, na=False).to_numpy()
+             & not_adult & ~casino)
+
+    boosted[casino] = np.maximum(prob[casino] + 0.30, 0.85)
+    boosted[board] = prob[board] + 0.10
+    return np.clip(boosted, 0, 1.0)
 
 
 def apply_gambling_keyword_boost(prob: np.ndarray, df: pd.DataFrame) -> np.ndarray:
